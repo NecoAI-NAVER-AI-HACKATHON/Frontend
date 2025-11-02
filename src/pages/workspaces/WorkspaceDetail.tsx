@@ -12,66 +12,10 @@ import {
   Waypoints,
 } from "lucide-react";
 import { WorkspaceMockData } from "./WorkspaceMockData";
-import type { Workspace } from "../../types/workspace";
 import TopBar from "../../components/topbar/TopBar";
-import WorkspaceAdding from "../../components/workspaces/WorkspaceAdding";
 import dayjs from "dayjs";
-import { useState } from "react";
 
-const Workspaces = () => {
-  // Variables for modal
-  const [showAddingWorkspace, setShowAddingWorkspace] =
-    useState<boolean>(false);
-
-  // Variables for filter buttons activate
-  // =======================================================================
-  const [clickedFilter, setClickedFilter] = useState<string>("");
-  const [createdValue, setCreatedValue] = useState<string>("Oldest");
-  const [nameValue, setNameValue] = useState<string>("A-Z");
-  const [statusValue, setStatusValue] = useState<string>("All");
-  const [activeDropdown, setActiveDropdown] = useState<string>("");
-  // =======================================================================
-
-  const toggleFilter = (title: string) => {
-    setActiveDropdown("");
-    if (clickedFilter === title) {
-      setClickedFilter("");
-    } else {
-      setClickedFilter(title);
-    }
-  };
-
-  // Values in filter buttons
-  const filters = [
-    {
-      title: "Created at",
-      options: ["Oldest", "Newest"],
-      value: createdValue,
-      setValue: setCreatedValue,
-    },
-    {
-      title: "Name",
-      options: ["A-Z", "Z-A"],
-      value: nameValue,
-      setValue: setNameValue,
-    },
-    {
-      title: "Status",
-      options: ["All", "Draft", "Inactive", "Active"],
-      value: statusValue,
-      setValue: setStatusValue,
-    },
-  ];
-
-  // Clear filter button
-  const clearFilters = () => {
-    setClickedFilter("");
-    setCreatedValue("Oldest");
-    setNameValue("A-Z");
-    setStatusValue("All");
-    setActiveDropdown("");
-  };
-
+const WorkspaceDetail = () => {
   return (
     <div className="flex flex-col">
       {/* Top Bar */}
@@ -261,13 +205,8 @@ const Workspaces = () => {
           ))}
         </div>
       </div>
-
-      {/* Modal Create Workspace */}
-      {showAddingWorkspace && (
-        <WorkspaceAdding setShowAddingWorkspace={setShowAddingWorkspace} />
-      )}
     </div>
   );
 };
 
-export default Workspaces;
+export default WorkspaceDetail;
