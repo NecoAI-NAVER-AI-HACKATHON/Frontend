@@ -1,20 +1,29 @@
-// src/pages/auth/Login.tsx
+// src/pages/auth/Register.tsx
 import * as React from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AuthService, type LoginPayload } from "@/lib/services/authService";
+import { AuthService } from "@/lib/services/authService";
+import { Eye, EyeOff } from "lucide-react";
 
-const schema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(6, "Minimum 6 characters"),
-});
+const schema = z
+  .object({
+    email: z.string().email("Enter a valid email"),
+    password: z.string().min(6, "Minimum 6 characters"),
+    confirmPassword: z.string().min(6, "Minimum 6 characters"),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  });
+
 type FormData = z.infer<typeof schema>;
 
-export default function Login() {
+export default function Register() {
   const navigate = useNavigate();
   const {
     register,
@@ -22,23 +31,26 @@ export default function Login() {
     formState: { isSubmitting, errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  const onSubmit = async (values: LoginPayload) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const onSubmit = async (values: FormData) => {
     try {
-      await AuthService.login(values);
-      navigate("/");
+      await AuthService.register(values);
+      navigate("/"); // or navigate("/login")
     } catch (err: any) {
-      alert(err.message ?? "Login failed");
+      alert(err.message ?? "Registration failed");
     }
   };
 
   return (
     <div className="relative min-h-screen w-full">
-      {/* Full-page purple background (no right gradient) */}
+      {/* Full-page purple background */}
       <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#3a2a8a] via-[#4a369c] to-[#2f2268]" />
 
       {/* Content */}
       <div className="relative z-10 mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-2">
-        {/* LEFT: copy shifted to the left */}
+        {/* LEFT copy (aligned left) */}
         <div className="flex items-center text-white">
           <div className="w-full pl-8 pr-6 py-14 md:pl-16 lg:pl-24">
             <div className="mb-8 flex items-center gap-3">
@@ -52,40 +64,41 @@ export default function Login() {
             </div>
 
             <h2 className="text-3xl font-bold leading-tight md:text-4xl">
-              Sign in to build, run & monitor your{" "}
-              <span className="text-sky-300">AI workflows</span>.
+              Create your account to build{" "}
+              <span className="text-sky-300">AI workflows</span> faster.
             </h2>
             <p className="mt-3 max-w-md text-white/80">
-              Access your flows, execution history, credentials, and team workspace.
+              Spin up flows, manage credentials, and collaborate with your team.
             </p>
 
             <div className="mt-10 grid max-w-md grid-cols-2 gap-4">
               <button className="rounded-2xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-medium backdrop-blur transition hover:bg-white/10">
-                Documentation
+                Pricing & Plans
               </button>
               <button className="rounded-2xl border border-white/20 bg-white/5 px-5 py-3 text-sm font-medium backdrop-blur transition hover:bg-white/10">
-                Status Page
+                Docs
               </button>
             </div>
           </div>
         </div>
 
-        {/* RIGHT: login card on top of purple */}
+        {/* RIGHT: registration form card */}
         <div className="flex items-center justify-center px-6 py-14">
           <div className="w-full max-w-md rounded-3xl bg-white/75 p-8 shadow-xl ring-1 ring-black/5 backdrop-blur-md dark:bg-zinc-900/60 dark:ring-white/10">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                Log In to <span className="text-indigo-600">NecoAI</span>
+                Sign Up for <span className="text-indigo-600">NecoAI</span>
               </h1>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                Welcome back. Please enter your details.
+                Start automating in minutes. It’s quick and easy.
               </p>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* Email */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                  Your Email
+                  Email
                 </label>
                 <Input
                   type="email"
@@ -99,51 +112,81 @@ export default function Login() {
                 )}
               </div>
 
+              {/* Password */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                  Your Password
+                  Password
                 </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••••"
-                  autoComplete="current-password"
-                  className="h-11 rounded-xl bg-white ring-1 ring-zinc-200 focus-visible:ring-2 dark:bg-zinc-900/50 dark:ring-zinc-800"
-                  {...register("password")}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••••"
+                    autoComplete="new-password"
+                    className="h-11 rounded-xl bg-white pr-10 ring-1 ring-zinc-200 focus-visible:ring-2 dark:bg-zinc-900/50 dark:ring-zinc-800"
+                    {...register("password")}
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-500 hover:text-zinc-700 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 {errors.password && (
-                  <p className="text-xs text-red-600">{errors.password.message}</p>
+                  <p className="text-xs text-red-600">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-700"
-                  />
-                  Remember
+              {/* Confirm */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                  Confirm Password
                 </label>
-                <button
-                  type="button"
-                  className="text-zinc-500 underline-offset-4 hover:underline"
-                >
-                  Forgotten?
-                </button>
+                <div className="relative">
+                  <Input
+                    type={showConfirm ? "text" : "password"}
+                    placeholder="••••••••••"
+                    autoComplete="new-password"
+                    className="h-11 rounded-xl bg-white pr-10 ring-1 ring-zinc-200 focus-visible:ring-2 dark:bg-zinc-900/50 dark:ring-zinc-800"
+                    {...register("confirmPassword")}
+                  />
+                  <button
+                    type="button"
+                    aria-label={showConfirm ? "Hide password" : "Show password"}
+                    onClick={() => setShowConfirm((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-500 hover:text-zinc-700 focus:outline-none"
+                  >
+                    {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-red-600">
+                    {errors.confirmPassword.message}
+                  </p>
+                )}
               </div>
 
+              {/* CTA */}
               <Button
                 type="submit"
                 className="mt-2 h-11 w-full rounded-xl bg-indigo-600 font-semibold text-white hover:bg-indigo-700"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Signing in..." : "Log In"}
+                {isSubmitting ? "Creating..." : "Create Account"}
               </Button>
 
+              {/* Divider without square */}
               <div className="my-3 flex items-center gap-3">
-  <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-  <span className="text-xs text-zinc-500">or</span>
-  <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-</div>
+                <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+                <span className="text-xs text-zinc-500">or</span>
+                <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+              </div>
+
+              {/* Google */}
               <Button
                 type="button"
                 variant="outline"
@@ -154,10 +197,11 @@ export default function Login() {
               </Button>
             </form>
 
+            {/* Footer */}
             <div className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-              Don’t have an account?{" "}
-              <Link to="/register" className="text-indigo-600 hover:underline">
-                Sign Up
+              Already have an account?{" "}
+              <Link to="/login" className="text-indigo-600 hover:underline">
+                Log In
               </Link>
             </div>
           </div>
