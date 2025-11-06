@@ -11,14 +11,17 @@ import {
   ChevronDown,
   Waypoints,
 } from "lucide-react";
-import { WorkspaceMockData } from "./WorkspaceMockData";
+import { WorkspacesData } from "../../mockdata/WorkspacesData";
 import type { Workspace } from "../../types/workspace";
 import TopBar from "../../components/topbar/TopBar";
 import WorkspaceAdding from "../../components/workspaces/WorkspaceAdding";
 import dayjs from "dayjs";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Workspaces = () => {
+  const navigate = useNavigate();
+
   // Variables for modal
   const [showAddingWorkspace, setShowAddingWorkspace] =
     useState<boolean>(false);
@@ -203,12 +206,13 @@ const Workspaces = () => {
           </div>
 
           {/* Workspace cards */}
-          {WorkspaceMockData.map((workspace: Workspace) => (
+          {WorkspacesData.map((workspace: Workspace) => (
             <div
               key={workspace.id}
               className="bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer 
                transition duration-300 ease-in-out
                hover:bg-[#F9FAFB] hover:shadow-lg hover:-translate-y-1"
+              onClick={() => navigate(`/workspaces/${workspace.id}`)}
             >
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">

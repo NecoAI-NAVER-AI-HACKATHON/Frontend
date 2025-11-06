@@ -19,8 +19,7 @@ function App() {
         {/* Each page all has sidebar (setup in Layout) */}
         <Route element={<Layout />}>
           <Route path="/workspaces" element={<Workspaces />} />
-          <Route path="/workspace/:id" element={<WorkspaceDetail />} />
-
+          <Route path="/workspaces/:id" element={<WorkspaceDetail />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
