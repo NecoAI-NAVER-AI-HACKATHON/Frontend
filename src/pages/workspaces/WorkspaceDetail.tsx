@@ -1,209 +1,78 @@
-import {
-  LayoutDashboard,
-  Search,
-  ChevronRight,
-  Clock,
-  Plus,
-  FolderOpen,
-  CircleX,
-  CirclePlus,
-  X,
-  ChevronDown,
-  Waypoints,
-} from "lucide-react";
-import { WorkspaceMockData } from "./WorkspaceMockData";
+import { FolderOpen } from "lucide-react";
+import Systems from "../../components/workspace_systems/Systems";
+import Models from "../../components/workspace_models/Models";
+import Logs from "../../components/workspace_logs/Logs";
+import Chatbot from "../../components/workspace_chatbot/Chatbot";
+import { WorkspacesData } from "../../mockdata/WorkspacesData";
 import TopBar from "../../components/topbar/TopBar";
-import dayjs from "dayjs";
+import { useParams } from "react-router-dom";
+import { useState } from "react";
 
 const WorkspaceDetail = () => {
+  const { id } = useParams();
+
+  const workspace_id = id;
+  console.log(workspace_id);
+
+  const workspace_data = WorkspacesData[0];
+
+  const [clickedOption, setClickedOption] = useState<string>("Systems");
+
+  const options = [
+    {
+      title: "Systems",
+    },
+    {
+      title: "Models",
+    },
+    {
+      title: "Logs",
+    },
+    {
+      title: "Chatbot",
+    },
+  ];
+
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-screen">
       {/* Top Bar */}
       <TopBar />
       <hr className="border-gray-300" />
 
       {/* Workspace */}
-      <div className="flex-1 flex flex-col bg-white px-10">
+      <div className="flex-1 flex flex-col bg-white px-10 overflow-y-auto">
         {/* Headers */}
         <div className="flex flex-col mt-5">
           <div className="flex items-center gap-2">
-            <LayoutDashboard />
-            <p className="text-xl font-medium">Workspace</p>
+            <FolderOpen />
+            <p className="text-xl font-medium">{workspace_data.name}</p>
           </div>
           <p className="font-medium text-[#627193]">
-            Manage your AI projects and workflows in one place.
+            {workspace_data.description}
           </p>
         </div>
 
-        {/* Control bar */}
-        <div className="flex flex-col mt-5">
-          {/* Search bar */}
-          <div className="flex items-center border border-gray-300 rounded-lg px-2 py-1 bg-[#F6F6F6] w-70">
-            <Search className="w-4 h-4 text-gray-500 mr-2" />
-            <input
-              type="text"
-              placeholder="Search for a workspace"
-              className="flex-1 outline-none text-xs text-gray-700 placeholder-gray-400"
-            />
-          </div>
-
-          {/* Filter buttons list */}
-          <div className="flex items-center justify-between mt-3">
-            <div className="flex items-center gap-3">
-              {filters.map((filter, index) => (
-                <div
-                  key={index}
-                  className={`relative flex items-center gap-1 text-xs bg-white text-[#627193] border-[#627193] ${
-                    clickedFilter === filter.title ? "" : "border-dashed"
-                  } border-2 rounded-xl py-1 px-2`}
-                >
-                  {clickedFilter === filter.title ? (
-                    <>
-                      <div
-                        className="flex items-center gap-1 cursor-pointer transition"
-                        onClick={() => toggleFilter(filter.title)}
-                      >
-                        <CircleX className="w-4 h-4" />
-                        <span className="font-medium">{filter.title}</span>
-                      </div>
-                      <div className="w-[1px] h-4 bg-[#627193]"></div>
-                      <div
-                        className="flex items-center gap-1 cursor-pointer transition"
-                        onClick={() =>
-                          setActiveDropdown(
-                            activeDropdown === filter.title ? "" : filter.title
-                          )
-                        }
-                      >
-                        <span className="font-medium text-[#5757F5]">
-                          {filter.value}
-                        </span>
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
-                      {activeDropdown === filter.title && (
-                        <div className="absolute left-0 top-[110%] w-full bg-white rounded-md shadow-lg border mt-1 z-10">
-                          {/* Tam giác chỉ lên */}
-                          <div className="absolute top-[-6px] left-5 w-3 h-3 bg-white border-l border-t rotate-45" />
-                          <p className="px-3 py-1 font-medium text-black">
-                            Filter by <span>{filter.title}</span>
-                          </p>
-                          <ul className="flex flex-col">
-                            {filter.options.map((opt) => (
-                              <li
-                                key={opt}
-                                onClick={() => {
-                                  filter.setValue(opt);
-                                  setActiveDropdown("");
-                                }}
-                                className={`px-3 py-1 rounded-md hover:bg-gray-100 cursor-pointer ${
-                                  filter.value === opt
-                                    ? "text-[#5757F5] font-medium"
-                                    : ""
-                                }`}
-                              >
-                                {opt}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div
-                      className="flex items-center cursor-pointer transition gap-1"
-                      onClick={() => toggleFilter(filter.title)}
-                    >
-                      <CirclePlus className="w-4 h-4" />
-                      <span className="font-medium">{filter.title}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Clear Filter button */}
-            <button
-              className="flex items-center gap-1 text-xs text-[#627193] cursor-pointer transition"
-              onClick={clearFilters}
-            >
-              <X className="w-4 h-4" />
-              <span className="font-medium">Clear Filters</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Workspace cards */}
-        <div className="grid grid-cols-3 gap-5 mt-5">
-          {/* Create new workspace button */}
-          <div
-            className="flex flex-col items-center justify-center gap-2 bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer hover:bg-[#EDEDED] transition duration-300 ease-in-out"
-            onClick={() => setShowAddingWorkspace(true)}
-          >
-            <div className="flex items-center justify-center rounded-md w-15 h-15 text-[#5757F5] border border-gray-300">
-              <Plus />
-            </div>
-            <p className="font-medium">New Workspace</p>
-            <p className="text-xs">Create a new workspace</p>
-          </div>
-
-          {/* Workspace cards */}
-          {WorkspaceMockData.map((workspace: Workspace) => (
+        {/* Options bar */}
+        <div className="flex flex-item items-center mt-5 border border-gray-300 w-fit rounded-lg p-1">
+          {options.map((option, index) => (
             <div
-              key={workspace.id}
-              className="bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer 
-               transition duration-300 ease-in-out
-               hover:bg-[#F9FAFB] hover:shadow-lg hover:-translate-y-1"
+              key={index}
+              className={`flex items-center px-2 py-1 cursor-pointer ${
+                clickedOption === option.title
+                  ? "bg-[#EDEDED] text-[#5757F5] rounded-md font-medium"
+                  : "text-[#627193]"
+              }`}
+              onClick={() => setClickedOption(option.title)}
             >
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center justify-center rounded-md w-10 h-10 text-[#5757F5] border border-gray-300">
-                    <FolderOpen />
-                  </div>
-                  <div className="text-[#627193]">
-                    <ChevronRight />
-                  </div>
-                </div>
-
-                {/* Workspace name */}
-                <p className="text-sm font-medium">{workspace.name}</p>
-
-                {/* Workspace description */}
-                <p className="text-xs">{workspace.description}</p>
-
-                {/* Workspace created time and status */}
-                <div className="flex items-center justify-between mt-3">
-                  {/* Created at information */}
-                  <div className="flex items-center gap-2">
-                    <Clock className="text-[#627193] w-5 h-5" />
-                    <p className="text-xs font-medium text-[#627193]">
-                      {dayjs(workspace.created_at).format("YYYY-MMM-DD")}
-                    </p>
-                  </div>
-
-                  {/* Systems counts information */}
-                  <div className="flex items-center gap-2">
-                    <Waypoints className="text-[#627193] w-5 h-5" />
-                    <p className="text-xs font-medium text-[#627193]">
-                      {workspace.system_count}
-                    </p>
-                  </div>
-
-                  <div
-                    className={`rounded-md px-2 py-1 text-xs font-medium ${
-                      workspace.status === "active"
-                        ? "border border-[#37a14e] text-[#37a14e]"
-                        : workspace.status === "inactive"
-                        ? "border border-gray-400 text-gray-400"
-                        : "border border-yellow-500 text-yellow-500"
-                    }`}
-                  >
-                    {workspace.status}
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm">{option.title}</p>
             </div>
           ))}
         </div>
+
+        {clickedOption === "Systems" && <Systems />}
+        {clickedOption === "Models" && <Models />}
+        {clickedOption === "Logs" && <Logs />}
+        {clickedOption === "Chatbot" && <Chatbot />}
       </div>
     </div>
   );

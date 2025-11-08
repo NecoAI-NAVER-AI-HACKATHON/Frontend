@@ -24,7 +24,7 @@ const TopBar = () => {
 
   const renderHeaderContent = () => {
     // Create a map of header content based on the URL path
-    if (location.pathname.startsWith("/workspaces")) {
+    if (location.pathname === "/workspaces") {
       return <TopBarButton title_button="Workspaces" path="/workspaces" />;
     }
 
@@ -34,7 +34,7 @@ const TopBar = () => {
         <div className="flex items-center gap-2">
           <TopBarButton title_button="Workspaces" path="/workspaces" />
           <ChevronRight className="w-4 h-4 text-gray-400" />
-          <p className="font-medium text-[#5757F5]">Systems</p>
+          <TopBarButton title_button="Systems" path="/workspaces" />
         </div>
       );
     }
