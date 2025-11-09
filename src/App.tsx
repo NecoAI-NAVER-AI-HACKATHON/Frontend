@@ -5,6 +5,7 @@ import Register from "./pages/auth/Register";
 import Layout from "./components/layout/Layout";
 import NotFoundPage from "./pages/notfoundpage/NotFoundPage";
 import WorkspaceDetail from "./pages/workspaces/WorkspaceDetail";
+import Workflow from "./pages/workflow/Workflow";
 
 import "./index.css";
 
@@ -21,6 +22,11 @@ function App() {
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/workspaces/:id" element={<WorkspaceDetail />} />
         </Route>
+        
+        {/* Workflow page (standalone, no Layout) */}
+        <Route path="/workflow" element={<Workflow />} />
+        <Route path="/workflow/:id" element={<Workflow />} />
+        
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>
