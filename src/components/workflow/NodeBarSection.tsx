@@ -6,7 +6,6 @@ import {
   FileText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useDraggable } from "@dnd-kit/core";
 import type { NodeDefinition, NodeCategory } from "../../types/workflow";
 import NodeLabel from "./NodeLabel";
 
@@ -78,20 +77,6 @@ const DraggableNodeItem = ({
   isSelected: boolean;
   onNodeSelect: (nodeType: NodeDefinition) => void;
 }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `node-def-${nodeDef.type}`,
-    data: {
-      type: "node-definition",
-      nodeDef,
-    },
-  });
-
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
-
   const Icon = iconMap[nodeDef.icon];
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -101,10 +86,6 @@ const DraggableNodeItem = ({
 
   return (
     <button
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
       draggable
       onDragStart={handleDragStart}
       onClick={() => onNodeSelect(nodeDef)}
@@ -112,7 +93,7 @@ const DraggableNodeItem = ({
         isSelected
           ? "bg-indigo-50 border border-indigo-500 text-indigo-700"
           : "bg-white hover:bg-gray-50 border border-gray-200 text-gray-700"
-      } ${isDragging ? "opacity-50" : ""}`}
+      }`}
     >
       {Icon && (
         <Icon

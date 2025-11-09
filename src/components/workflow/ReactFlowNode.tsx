@@ -13,8 +13,6 @@ import type { WorkflowNode } from "../../types/workflow";
 interface ReactFlowNodeData {
   node: WorkflowNode;
   icon: LucideIcon;
-  isSelected: boolean;
-  onNodeSelect: (nodeId: string) => void;
 }
 
 const iconMap: Record<string, LucideIcon> = {
@@ -37,8 +35,8 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 const ReactFlowNode = ({ data, selected }: NodeProps<ReactFlowNodeData>) => {
-  const { node, icon: Icon, onNodeSelect } = data;
-  const isSelected = selected || data.isSelected;
+  const { node, icon: Icon } = data;
+  const isSelected = selected;
 
   return (
     <div
@@ -47,7 +45,6 @@ const ReactFlowNode = ({ data, selected }: NodeProps<ReactFlowNodeData>) => {
           ? "border-indigo-500 shadow-lg shadow-indigo-200"
           : "border-gray-300 hover:border-indigo-300"
       }`}
-      onClick={() => onNodeSelect(node.id)}
     >
       {/* Input connection handle */}
       <Handle

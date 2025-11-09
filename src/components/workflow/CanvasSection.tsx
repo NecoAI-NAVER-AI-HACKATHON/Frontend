@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useEffect, useRef } from "react";
-import { useDroppable } from "@dnd-kit/core";
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
+  MarkerType,
   type Node,
   type Edge,
   type Connection,
@@ -31,6 +31,7 @@ interface CanvasSectionProps {
   selectedNodeId: string | null;
   onNodeSelect: (nodeId: string | null) => void;
   onNodeUpdate: (nodeId: string, updates: Partial<WorkflowNode>) => void;
+  onNodeDelete: (nodeId: string) => void;
   onNodeAdd?: (node: WorkflowNode) => void;
 }
 
@@ -62,11 +63,9 @@ const CanvasSection = ({
   selectedNodeId,
   onNodeSelect,
   onNodeUpdate,
+  onNodeDelete,
   onNodeAdd,
 }: CanvasSectionProps) => {
-  const { setNodeRef: setDroppableRef } = useDroppable({
-    id: "canvas",
-  });
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
   // Convert WorkflowNode[] to ReactFlow Node[]
@@ -80,13 +79,11 @@ const CanvasSection = ({
         data: {
           node,
           icon: Icon,
-          isSelected: selectedNodeId === node.id,
-          onNodeSelect,
         },
-        selected: selectedNodeId === node.id,
+        selected: false, // Will be updated by separate useEffect
       };
     });
-  }, [nodes, selectedNodeId, onNodeSelect]);
+  }, [nodes]);
 
   // Convert connections to ReactFlow Edge[]
   const reactFlowEdges = useMemo<Edge[]>(() => {
@@ -101,6 +98,10 @@ const CanvasSection = ({
             type: "smoothstep",
             style: { stroke: "#6366f1", strokeWidth: 2 },
             animated: false,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "#6366f1",
+            },
           });
         });
       }
@@ -111,40 +112,103 @@ const CanvasSection = ({
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState(reactFlowNodes);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(reactFlowEdges);
 
-  // Update ReactFlow nodes when our nodes change
+  // Track if we're currently dragging to prevent node updates during drag
+  const isDraggingRef = useRef(false);
+  const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Update ReactFlow nodes when our nodes change (but not during drag)
   useEffect(() => {
-    setRfNodes(reactFlowNodes);
+    // Don't update nodes if we're currently dragging - ReactFlow manages this
+    if (!isDraggingRef.current) {
+      setRfNodes(reactFlowNodes);
+    }
   }, [reactFlowNodes, setRfNodes]);
+
+  // Update only selection state when selection changes (without replacing nodes)
+  // Use a ref to track previous selection to avoid unnecessary updates
+  const prevSelectedId = useRef<string | null>(null);
+  useEffect(() => {
+    // Only update if selection actually changed
+    if (prevSelectedId.current === selectedNodeId) return;
+    prevSelectedId.current = selectedNodeId;
+    
+    // Update selection synchronously to prevent flicker
+    setRfNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        selected: selectedNodeId === node.id,
+      }))
+    );
+  }, [selectedNodeId, setRfNodes]);
 
   // Update ReactFlow edges when connections change
   useEffect(() => {
     setRfEdges(reactFlowEdges);
   }, [reactFlowEdges, setRfEdges]);
 
-  // Handle node position changes
+  // Handle node position changes and deletions
   const onNodesChangeHandler: OnNodesChange = useCallback(
     (changes) => {
       onNodesChange(changes);
-      // Update node positions in parent state
+      
+      // Track if position is changing (indicates dragging)
+      const hasPositionChange = changes.some((change) => change.type === "position");
+      if (hasPositionChange) {
+        isDraggingRef.current = true;
+        // Clear existing timeout
+        if (dragTimeoutRef.current) {
+          clearTimeout(dragTimeoutRef.current);
+        }
+        // Reset dragging flag after drag ends (no more position changes)
+        dragTimeoutRef.current = setTimeout(() => {
+          isDraggingRef.current = false;
+        }, 200);
+      }
+      
+      // Handle node deletions
       changes.forEach((change) => {
-        if (change.type === "position" && change.position) {
+        if (change.type === "remove") {
+          // Remove edges connected to this node
+          setRfEdges((eds) =>
+            eds.filter(
+              (edge) => edge.source !== change.id && edge.target !== change.id
+            )
+          );
+          // Delete the node from parent state
+          onNodeDelete(change.id);
+        } else if (change.type === "position" && change.position) {
+          // Update position after drag ends (debounced)
           const node = rfNodes.find((n) => n.id === change.id);
           if (node) {
-            onNodeUpdate(change.id, {
-              position: change.position,
-            });
+            const nodeId = change.id;
+            const newPosition = change.position;
+            // Clear any existing timeout for this node
+            // Update position after drag ends
+            setTimeout(() => {
+              if (!isDraggingRef.current) {
+                onNodeUpdate(nodeId, {
+                  position: newPosition,
+                });
+              }
+            }, 250);
           }
         }
       });
     },
-    [onNodesChange, rfNodes, onNodeUpdate]
+    [onNodesChange, rfNodes, onNodeUpdate, onNodeDelete, setRfEdges]
   );
 
   // Handle new connections
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       if (connection.source && connection.target) {
-        setRfEdges((eds) => addEdge(connection, eds));
+        setRfEdges((eds) => addEdge({
+          ...connection,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#6366f1",
+          },
+        }, eds));
         // Update node connections in parent state
         const sourceNode = nodes.find((n) => n.id === connection.source);
         if (sourceNode) {
@@ -163,7 +227,17 @@ const CanvasSection = ({
     [nodes, setRfEdges, onNodeUpdate]
   );
 
-  // Handle node click to deselect
+  // Handle node click to select
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      // Prevent event propagation to avoid conflicts
+      _event.stopPropagation();
+      onNodeSelect(node.id);
+    },
+    [onNodeSelect]
+  );
+
+  // Handle pane click to deselect
   const onPaneClick = useCallback(() => {
     onNodeSelect(null);
   }, [onNodeSelect]);
@@ -214,7 +288,6 @@ const CanvasSection = ({
   return (
     <div
       id="workflow-canvas"
-      ref={setDroppableRef}
       className="flex-1 bg-gray-50"
     >
       <ReactFlow
@@ -223,16 +296,24 @@ const CanvasSection = ({
         onNodesChange={onNodesChangeHandler}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onInit={onInit}
         nodeTypes={nodeTypes}
         fitView
+        deleteKeyCode={["Delete", "Backspace"]}
+        multiSelectionKeyCode={["Meta", "Control"]}
+        selectNodesOnDrag={false}
         attributionPosition="bottom-left"
         defaultEdgeOptions={{
           type: "smoothstep",
           style: { stroke: "#6366f1", strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#6366f1",
+          },
         }}
       >
         <Background color="#e5e7eb" gap={16} />

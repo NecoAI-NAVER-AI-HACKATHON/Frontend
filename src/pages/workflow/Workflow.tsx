@@ -1,12 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import type { DragEndEvent } from "@dnd-kit/core";
 import WorkflowNav from "../../components/workflow/WorkflowNav";
 import NodeBarSection from "../../components/workflow/NodeBarSection";
 import NodeConfigSection from "../../components/workflow/NodeConfigSection";
 import CanvasSection from "../../components/workflow/CanvasSection";
 import LogSection from "../../components/workflow/LogSection";
+import { WorkflowProvider, useWorkflow } from "../../contexts/WorkflowContext";
 import type {
   WorkflowNode,
   NodeDefinition,
@@ -19,30 +18,31 @@ import {
   mockExecutionLogs,
 } from "../../mockdata/WorkflowData";
 
-const Workflow = () => {
+const WorkflowContent = () => {
   const { id } = useParams<{ id?: string }>();
   const isMockWorkflow = id === mockWorkflowId;
   const workflowName = isMockWorkflow
     ? mockWorkflow.name
     : id || "summary agent";
 
-  // State management
-  const [nodes, setNodes] = useState<WorkflowNode[]>([]);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Use workflow context
+  const {
+    nodes,
+    logs,
+    selectedNodeId,
+    setNodes,
+    setLogs,
+    setSelectedNodeId,
+    updateNode,
+    addNode,
+    deleteNode,
+    addLog,
+  } = useWorkflow();
+
   const [selectedNodeType, setSelectedNodeType] = useState<string | undefined>(
     undefined
   );
   const [showConfig, setShowConfig] = useState(false);
-  const [logs, setLogs] = useState<ExecutionLog[]>([]);
-
-  // DnD Kit sensors - no delay for immediate dragging
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 0,
-      },
-    })
-  );
 
   // Load mock data if ID matches
   useEffect(() => {
@@ -79,67 +79,52 @@ const Workflow = () => {
       },
       config: nodeDef.defaultConfig || { name: nodeDef.label },
     };
-    setNodes((prev) => [...prev, newNode]);
+    addNode(newNode);
     setSelectedNodeId(newNode.id);
     setShowConfig(true);
-  }, [nodes.length]);
+  }, [nodes.length, addNode, setSelectedNodeId]);
 
   const handleNodeClick = useCallback((nodeId: string | null) => {
     setSelectedNodeId(nodeId);
     setShowConfig(nodeId !== null);
-  }, []);
+  }, [setSelectedNodeId]);
 
   const handleNodeUpdate = useCallback(
     (nodeId: string, updates: Partial<WorkflowNode>) => {
-      setNodes((prev) =>
-        prev.map((node) =>
-          node.id === nodeId ? { ...node, ...updates } : node
-        )
-      );
+      updateNode(nodeId, updates);
     },
-    []
+    [updateNode]
   );
 
-  // Handle drag end - for both adding new nodes and moving existing ones
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (!over) return;
-
-    // Check if dragging a node definition from the library
-    if (active.data.current?.type === "node-definition" && over.id === "canvas") {
-      const nodeDef = active.data.current.nodeDef as NodeDefinition;
-      
-      // Get canvas element to calculate position
-      const canvasElement = document.getElementById("workflow-canvas");
-      if (canvasElement) {
-        const canvasRect = canvasElement.getBoundingClientRect();
-        const activatorEvent = event.activatorEvent as MouseEvent;
-        
-        if (activatorEvent) {
-          // Calculate position relative to canvas
-          const x = activatorEvent.clientX - canvasRect.left - 90; // Center the node
-          const y = activatorEvent.clientY - canvasRect.top - 20;
-
-          const newNode: WorkflowNode = {
-            id: `node-${Date.now()}`,
-            type: nodeDef.type,
-            name: nodeDef.label,
-            position: {
-              x: Math.max(0, x),
-              y: Math.max(0, y),
-            },
-            config: nodeDef.defaultConfig || { name: nodeDef.label },
-          };
-          setNodes((prev) => [...prev, newNode]);
-          setSelectedNodeId(newNode.id);
-          setSelectedNodeType(newNode.type);
-          setShowConfig(true);
-        }
-      }
+  const handleNodeDelete = useCallback((nodeId: string) => {
+    deleteNode(nodeId);
+    
+    // Clear selection if deleted node was selected
+    if (selectedNodeId === nodeId) {
+      setSelectedNodeId(null);
+      setShowConfig(false);
     }
-    // Note: ReactFlow handles node dragging internally, so we don't need to handle canvas-node drags here
-  }, [nodes, handleNodeUpdate]);
+  }, [selectedNodeId, deleteNode, setSelectedNodeId]);
+
+  // Handle keyboard delete
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Delete or Backspace key
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedNodeId) {
+        // Don't delete if user is typing in an input field
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+          return;
+        }
+        
+        e.preventDefault();
+        handleNodeDelete(selectedNodeId);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedNodeId, handleNodeDelete]);
 
   const handleConfigChange = useCallback(
     (nodeId: string, config: Record<string, any>) => {
@@ -155,20 +140,18 @@ const Workflow = () => {
 
   const handleRun = () => {
     // Simulate workflow execution
-    const newLogs: ExecutionLog[] = [
-      {
-        id: `log-${Date.now()}`,
-        timestamp: new Date().toLocaleTimeString("en-US", {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-        message: "Workflow started",
-        status: "success",
-      },
-    ];
-    setLogs((prev) => [...newLogs, ...prev]);
+    const newLog: ExecutionLog = {
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString("en-US", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      message: "Workflow started",
+      status: "success",
+    };
+    addLog(newLog);
   };
 
   const handleSave = () => {
@@ -191,8 +174,7 @@ const Workflow = () => {
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) || null;
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-white">
         {/* Top Navigation */}
         <WorkflowNav
           workflowName={workflowName}
@@ -217,8 +199,9 @@ const Workflow = () => {
               selectedNodeId={selectedNodeId}
               onNodeSelect={handleNodeClick}
               onNodeUpdate={handleNodeUpdate}
+              onNodeDelete={handleNodeDelete}
               onNodeAdd={(newNode) => {
-                setNodes((prev) => [...prev, newNode]);
+                addNode(newNode);
                 setSelectedNodeId(newNode.id);
                 setSelectedNodeType(newNode.type);
                 setShowConfig(true);
@@ -241,8 +224,24 @@ const Workflow = () => {
             />
           )}
         </div>
-      </div>
-    </DndContext>
+    </div>
+  );
+};
+
+const Workflow = () => {
+  const { id } = useParams<{ id?: string }>();
+  const isMockWorkflow = id === mockWorkflowId;
+  const initialWorkflow = isMockWorkflow ? mockWorkflow : {
+    id: id || "new-workflow",
+    name: id || "summary agent",
+    nodes: [],
+    connections: [],
+  };
+
+  return (
+    <WorkflowProvider initialWorkflow={initialWorkflow}>
+      <WorkflowContent />
+    </WorkflowProvider>
   );
 };
 

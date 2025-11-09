@@ -1,4 +1,3 @@
-import { useDraggable } from "@dnd-kit/core";
 import type { LucideIcon } from "lucide-react";
 import type { WorkflowNode } from "../../types/workflow";
 
@@ -17,50 +16,14 @@ const NodeCard = ({
   onClick,
   onConnectionPointClick,
 }: NodeCardProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging,
-  } = useDraggable({
-    id: node.id,
-    data: {
-      type: "canvas-node",
-      node,
-    },
-  });
-
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
-
   return (
     <div
-      ref={setNodeRef}
-      style={{
-        ...style,
-        position: "absolute",
-        left: `${node.position.x}px`,
-        top: `${node.position.y}px`,
-        opacity: isDragging ? 0.5 : 1,
-        cursor: isDragging ? "grabbing" : "grab",
-      }}
-      {...listeners}
-      {...attributes}
       className={`relative bg-white border-2 rounded-lg p-4 min-w-[180px] transition shadow-sm ${
         isSelected
           ? "border-indigo-500 shadow-lg shadow-indigo-200"
           : "border-gray-300 hover:border-indigo-300"
       }`}
-      onClick={() => {
-        // Only select if not dragging
-        if (!isDragging) {
-          onClick?.();
-        }
-      }}
+      onClick={onClick}
     >
       {/* Input connection point */}
       <div
