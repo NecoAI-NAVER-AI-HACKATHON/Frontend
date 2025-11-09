@@ -2,18 +2,19 @@
 
 // Base URL — prefer env, fallback for local dev
 export const API_BASE_URL =
-  import.meta.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+  import.meta.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 // Common API paths grouped by domain
 export const API = {
   AUTH: {
     LOGIN: "/auth/login",
-    REGISTER: "/auth/register",
+    REGISTER: "/auth/signup",
     LOGOUT: "/auth/logout",
     ME: "/auth/me",
     GOOGLE_OAUTH_START: "/auth/google",
     // Example callback path if backend uses it:
     GOOGLE_OAUTH_CALLBACK: "/auth/google/callback",
+    REFRESH_TOKEN: "/auth/refresh",
   },
 
   // Add more domains as needed
