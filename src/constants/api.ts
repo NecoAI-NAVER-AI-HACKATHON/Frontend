@@ -17,12 +17,16 @@ export const API = {
     REFRESH_TOKEN: "/auth/refresh",
   },
 
-  // Add more domains as needed
-  USERS: {
-
+  WORKSPACE: {
+    WORKSPACES_LIST: "/workspace/",
   },
 
+  WORKFLOW: {
+    WORKFLOWS_LIST: (id: string) => `/workspace/${id}/systems`,
+  },
 
+  // Add more domains as needed
+  USERS: {},
 } as const;
 
 // Helper to join BASE + path safely

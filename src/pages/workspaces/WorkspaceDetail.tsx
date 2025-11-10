@@ -3,19 +3,16 @@ import Systems from "../../components/workspace_systems/Systems";
 import Models from "../../components/workspace_models/Models";
 import Logs from "../../components/workspace_logs/Logs";
 import Chatbot from "../../components/workspace_chatbot/Chatbot";
-import { WorkspacesData } from "../../mockdata/WorkspacesData";
 import TopBar from "../../components/topbar/TopBar";
-import { useParams } from "react-router-dom";
 import { useState } from "react";
 
-const WorkspaceDetail = () => {
-  const { id } = useParams();
-
-  const workspace_id = id;
-  console.log(workspace_id);
-
-  const workspace_data = WorkspacesData[0];
-
+const WorkspaceDetail = ({
+  workspace_name,
+  workspace_description,
+}: {
+  workspace_name: string;
+  workspace_description: string;
+}) => {
   const [clickedOption, setClickedOption] = useState<string>("Systems");
 
   const options = [
@@ -45,11 +42,9 @@ const WorkspaceDetail = () => {
         <div className="flex flex-col mt-5">
           <div className="flex items-center gap-2">
             <FolderOpen />
-            <p className="text-xl font-medium">{workspace_data.name}</p>
+            <p className="text-xl font-medium">{workspace_name}</p>
           </div>
-          <p className="font-medium text-[#627193]">
-            {workspace_data.description}
-          </p>
+          <p className="font-medium text-[#627193]">{workspace_description}</p>
         </div>
 
         {/* Options bar */}

@@ -1,13 +1,35 @@
 import { ChevronRight, Plus, SplinePointer } from "lucide-react";
-import type { System } from "../../types/system";
 import SystemAdding from "./SystemAdding";
-import { SystemsData } from "../../mockdata/SystemsData";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { WorksflowService } from "@/lib/services/workflowService";
+import type { Workflow } from "@/lib/services/workflowService";
 
 const Systems = () => {
+  const { id } = useParams<{ id: string }>();
+  const workspace_id = id as string;
+
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [totalItems, setTotalItems] = useState<number>();
+
   // Variables for modal
   const [showAddingSystem, setShowAddingSystem] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await WorksflowService.getAllWorkflows(workspace_id);
+        setWorkflows(response.workflows);
+        setTotalItems(response.total);
+        console.log(workflows);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <div className="flex flex-col">
@@ -34,9 +56,9 @@ const Systems = () => {
         {/* System cards */}
         <div className="grid grid-cols-3 gap-5 mt-5">
           {/* System cards */}
-          {SystemsData.map((system: System) => (
+          {workflows.map((workflow: Workflow) => (
             <div
-              key={system.id}
+              key={workflow.id}
               className="bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer 
                transition duration-300 ease-in-out
                hover:bg-[#F9FAFB] hover:shadow-lg hover:-translate-y-1"
@@ -52,10 +74,10 @@ const Systems = () => {
                 </div>
 
                 {/* Workspace name */}
-                <p className="text-sm font-medium">{system.name}</p>
+                <p className="text-sm font-medium">{workflow.name}</p>
 
                 {/* Workspace description */}
-                <p className="text-xs">{system.description}</p>
+                <p className="text-xs">{workflow.description}</p>
 
                 {/* Workspace created time and status */}
                 <div className="flex items-center justify-between mt-3">
@@ -65,12 +87,12 @@ const Systems = () => {
                       Last updated:
                     </p>
                     <p className="text-sm font-medium text-[#627193]">
-                      {dayjs(system.created_at).format("YYYY-MMM-DD")}
+                      {dayjs(workflow.created_at).format("YYYY-MMM-DD")}
                     </p>
                   </div>
 
                   <div className="rounded-md px-2 py-1 text-xs font-medium border border-[#37a14e] text-[#37a14e]">
-                    {system.nodes_count} nodes
+                    0 nodes
                   </div>
                 </div>
               </div>

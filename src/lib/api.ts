@@ -8,6 +8,15 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// request interceptor to include the access token in headers
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // optional: normalize errors
 api.interceptors.response.use(
   (r) => r,

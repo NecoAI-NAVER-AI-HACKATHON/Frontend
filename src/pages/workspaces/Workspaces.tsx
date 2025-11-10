@@ -11,13 +11,14 @@ import {
   ChevronDown,
   Waypoints,
 } from "lucide-react";
-import { WorkspacesData } from "../../mockdata/WorkspacesData";
-import type { Workspace } from "../../types/workspace";
+// import { WorkspacesData } from "../../mockdata/WorkspacesData";
+import type { Workspace } from "@/lib/services/workspaceService";
 import TopBar from "../../components/topbar/TopBar";
 import WorkspaceAdding from "../../components/workspaces/WorkspaceAdding";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { WorkspaceService } from "@/lib/services/workspaceService";
 
 const Workspaces = () => {
   const navigate = useNavigate();
@@ -25,6 +26,9 @@ const Workspaces = () => {
   // Variables for modal
   const [showAddingWorkspace, setShowAddingWorkspace] =
     useState<boolean>(false);
+
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [totalItems, setTotalItems] = useState<number>();
 
   // Variables for filter buttons activate
   // =======================================================================
@@ -74,6 +78,20 @@ const Workspaces = () => {
     setStatusValue("All");
     setActiveDropdown("");
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await WorkspaceService.getAllWorkspaces();
+        setWorkspaces(response.workspaces);
+        setTotalItems(response.total);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <div className="flex flex-col">
@@ -206,7 +224,7 @@ const Workspaces = () => {
           </div>
 
           {/* Workspace cards */}
-          {WorkspacesData.map((workspace: Workspace) => (
+          {workspaces.map((workspace: Workspace) => (
             <div
               key={workspace.id}
               className="bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer 
@@ -244,7 +262,7 @@ const Workspaces = () => {
                   <div className="flex items-center gap-2">
                     <Waypoints className="text-[#627193] w-5 h-5" />
                     <p className="text-xs font-medium text-[#627193]">
-                      {workspace.system_count}
+                      {workspace.systems_count}
                     </p>
                   </div>
 
