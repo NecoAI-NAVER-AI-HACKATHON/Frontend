@@ -1,0 +1,287 @@
+{
+  "id": "wf-feedback-daily",
+  "name": "Daily Feedback Batch Processor",
+  "nodes": [
+    {
+      "name": "DailyTrigger",
+      "type": "trigger",
+      "subtype": "schedule",
+      "position": [100, 200],
+      "parameters": {
+        "mode": {
+          "mode": "daily",
+          "dailyTime": "12:00:00"
+        },
+        "timezone": "Asia/Ho_Chi_Minh"
+      },
+      "outputSchema": {
+        "timestamp": "12:00:00",
+        "nextRunTime": "2023-07-01T12:00:00Z",
+        "runCount": 1
+      }
+    },
+    {
+      "name": "ExcelReader",
+      "type": "data-transform",
+      "subtype": "function",
+      "position": [300, 200],
+      "parameters": { "code": "readBatchNewFeedbacks()" },
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "image": { "type": "string" },
+            "comment": { "type": "string" }
+          },
+          "required": ["image", "comment"]
+        }
+      }
+    },
+    {
+      "name": "SplitInBatches",
+      "type": "data-transform",
+      "subtype": "split",
+      "position": [500, 200],
+      "parameters": {
+        "batchSize": 1
+      },
+      "inputSchema": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "image": { "type": "string" },
+              "comment": { "type": "string" }
+            },
+            "required": ["image", "comment"]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "image": { "type": "string" },
+          "comment": { "type": "string" }
+        },
+        "required": ["image", "comment"]
+      }
+    },
+    {
+      "name": "NaverImageAnalyze",
+      "type": "ai-processing",
+      "subtype": "image-analyze",
+      "position": [700, 120],
+      "parameters": {
+        "prompt": "string",
+        "url": "https://naver.ai/image/analyze",
+        "method": "POST"
+      },
+      "inputSchema": {
+        "image": { "type": "string" }
+      },
+      "outputSchema": {
+        "tag": {
+          "type": { "type": "string" },
+          "item": { "type": "string" }
+        },
+        "description": { "type": "string" }
+      }
+    },
+    {
+      "name": "NaverTextAnalyze",
+      "type": "ai-processing",
+      "subtype": "text-analyze",
+      "position": [700, 280],
+      "parameters": {
+        "prompt": "string",
+        "url": "https://naver.ai/chat/analyze",
+        "method": "POST"
+      },
+      "inputSchema": {
+        "text": { "type": "string" }
+      },
+      "outputSchema": {
+        "problem": { "type": "string" },
+        "solution": { "type": "string" }
+      }
+    },
+    {
+      "name": "AssignTeam",
+      "type": "data-transform",
+      "subtype": "function",
+      "position": [900, 200],
+      "parameters": { "code": "assignTeamByTags()" },
+      "inputSchema": {
+        "tag": {
+          "type": { "type": "string" },
+          "item": { "type": "string" }
+        },
+        "description": { "type": "string" }
+      },
+      "outputSchema": {
+        "team": "string"
+      }
+    },
+    {
+      "name": "CheckTeamCondition",
+      "type": "control",
+      "subtype": "if",
+      "position": [900, 120],
+      "parameters": {
+        "field": { "type": "string" },
+        "operator": { "type": "string" },
+        "value": { "type": "string" },
+        "trueNodeName": { "type": "string" },
+        "falseNodeName": { "type": "string" }
+      },
+      "inputSchema": {
+        "team": { "type": "string" }
+      },
+      "outputSchema": {
+        "team": { "type": "string" }
+      }
+    },
+    {
+      "name": "Merge Data",
+      "type": "data-transform",
+      "subtype": "function",
+      "position": [1000, 200],
+      "parameters": {},
+      "inputSchema": {
+        "image": { "type": "string" },
+        "comment": { "type": "string" },
+        "team": { "type": "string" }
+      },
+      "outputSchema": {
+        "image": { "type": "string" },
+        "comment": { "type": "string" },
+        "team": { "type": "string" }
+      }
+    },
+    {
+      "name": "SaveToDB",
+      "type": "output",
+      "subtype": "database_write",
+      "position": [1100, 200],
+      "parameters": {
+        "database": { "type": "string" },
+        "table": { "type": "string" },
+        "fields": {
+          "team": { "type": "string" },
+          "image": { "type": "string" },
+          "comment": { "type": "string" }
+        },
+        "credentials": {
+          "type": "string",
+          "fields": {
+            "API_KEY": { "type": "string" },
+            "API_SECRET": { "type": "string" }
+          }
+        }
+      },
+      "inputSchema": {
+        "image": { "type": "string" },
+        "comment": { "type": "string" },
+        "team": { "type": "string" }
+      },
+      "outputSchema": {
+        "status": { "type": "string" }
+      }
+    },
+    {
+      "name": "TeamMail",
+      "type": "output",
+      "subtype": "mail-writer",
+      "position": [1300, 200],
+      "parameters": {
+        "to": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" }
+      },
+      "inputSchema": {
+        "image": { "type": "string" },
+        "comment": { "type": "string" },
+        "team": { "type": "string" }
+      },
+      "outputSchema": {
+        "status": { "type": "string" }
+      }
+    },
+    {
+      "name": "ClientMail",
+      "type": "output",
+      "subtype": "mail-writer",
+      "position": [1300, 200],
+      "parameters": {
+        "to": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" }
+      },
+      "inputSchema": {
+        "problem": { "type": "string" },
+        "solution": { "type": "string" }
+      },
+      "outputSchema": {
+        "status": { "type": "string" }
+      }
+    },
+    {
+      "name": "SellerMail",
+      "type": "output",
+      "subtype": "mail-writer",
+      "position": [1300, 200],
+      "parameters": {
+        "to": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" }
+      },
+      "inputSchema": {
+        "image": { "type": "string" },
+        "comment": { "type": "string" },
+        "team": { "type": "string" },
+        "solution": { "type": "string" }
+      },
+      "outputSchema": {
+        "status": { "type": "string" }
+      }
+    }
+  ],
+  "connections": {
+    "DailyTrigger": {
+      "main": [[{ "targetNode": "ExcelReader", "inputIndex": 0 }]]
+    },
+    "ExcelReader": {
+      "main": [[{ "targetNode": "SplitInBatches", "inputIndex": 0 }]]
+    },
+    "SplitInBatches": {
+      "main": [
+        [
+          { "targetNode": "NaverImageAnalyze", "inputIndex": 0 },
+          { "targetNode": "NaverTextAnalyze", "inputIndex": 0 }
+        ]
+      ]
+    },
+    "NaverImageAnalyze": {
+      "main": [[{ "targetNode": "AssignTeam", "inputIndex": 0 }]]
+    },
+    "AssignTeam": {
+      "main": [[{ "targetNode": "CheckTeamCondition", "inputIndex": 0 }]]
+    },
+    "CheckTeamCondition": {
+      "main": [[{ "targetNode": "MergeData", "inputIndex": 0 }]]
+    },
+    "NaverTextAnalyze": {
+      "main": [[{ "targetNode": "MergeData", "inputIndex": 0 }]]
+    },
+    "MergeData": {
+      "main": [
+        [{ "targetNode": "SaveToDB", "inputIndex": 0 }],
+        [{ "targetNode": "TeamMail", "inputIndex": 0 }],
+        [{ "targetNode": "ClientMail", "inputIndex": 0 }],
+        [{ "targetNode": "SellerMail", "inputIndex": 0 }]
+      ]
+    }
+  }
+}
