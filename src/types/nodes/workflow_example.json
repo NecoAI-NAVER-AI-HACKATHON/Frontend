@@ -15,9 +15,12 @@
         "timezone": "Asia/Ho_Chi_Minh"
       },
       "outputSchema": {
-        "timestamp": "12:00:00",
-        "nextRunTime": "2023-07-01T12:00:00Z",
-        "runCount": 1
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string" },
+          "nextRunTime": { "type": "string" },
+          "runCount": { "type": "number" }
+        }
       }
     },
     {
@@ -25,16 +28,21 @@
       "type": "data-transform",
       "subtype": "function",
       "position": [300, 200],
-      "parameters": { "code": "readBatchNewFeedbacks()" },
+      "parameters": {
+        "language": "javascript",
+        "code": "readBatchNewFeedbacks()"
+      },
       "outputSchema": {
         "type": "array",
         "items": {
           "type": "object",
           "properties": {
             "image": { "type": "string" },
-            "comment": { "type": "string" }
+            "comment": { "type": "string" },
+            "client_email": { "type": "string" },
+            "date": { "type": "string" }
           },
-          "required": ["image", "comment"]
+          "required": ["image", "comment", "email", "date"]
         }
       }
     },
@@ -53,9 +61,10 @@
             "type": "object",
             "properties": {
               "image": { "type": "string" },
-              "comment": { "type": "string" }
-            },
-            "required": ["image", "comment"]
+              "comment": { "type": "string" },
+              "client_email": { "type": "string" },
+              "date": { "type": "string" }
+            }
           }
         }
       },
@@ -63,9 +72,10 @@
         "type": "object",
         "properties": {
           "image": { "type": "string" },
-          "comment": { "type": "string" }
-        },
-        "required": ["image", "comment"]
+          "comment": { "type": "string" },
+          "client_email": { "type": "string" },
+          "date": { "type": "string" }
+        }
       }
     },
     {
@@ -74,19 +84,25 @@
       "subtype": "image-analyze",
       "position": [700, 120],
       "parameters": {
-        "prompt": "string",
+        "prompt": "Point out team is responsible for this product type, {{teams_data}}, {{json.image}}. If no team is responsible, return 'Others'.",
         "url": "https://naver.ai/image/analyze",
         "method": "POST"
       },
       "inputSchema": {
-        "image": { "type": "string" }
+        "type": "object",
+        "properties": {
+          "image": { "type": "string" }
+        }
       },
       "outputSchema": {
-        "tag": {
+        "type": "object",
+        "properties": {
           "type": { "type": "string" },
-          "item": { "type": "string" }
-        },
-        "description": { "type": "string" }
+          "item": { "type": "string" },
+          "description": { "type": "string" },
+          "team": { "type": "string" },
+          "team_email": { "type": "string" }
+        }
       }
     },
     {
@@ -95,33 +111,22 @@
       "subtype": "text-analyze",
       "position": [700, 280],
       "parameters": {
-        "prompt": "string",
+        "prompt": "Analyze this user's feedback and return the problem and solution. {{json.comment}}",
         "url": "https://naver.ai/chat/analyze",
         "method": "POST"
       },
       "inputSchema": {
-        "text": { "type": "string" }
+        "type": "object",
+        "properties": {
+          "comment": { "type": "string" }
+        }
       },
       "outputSchema": {
-        "problem": { "type": "string" },
-        "solution": { "type": "string" }
-      }
-    },
-    {
-      "name": "AssignTeam",
-      "type": "data-transform",
-      "subtype": "function",
-      "position": [900, 200],
-      "parameters": { "code": "assignTeamByTags()" },
-      "inputSchema": {
-        "tag": {
-          "type": { "type": "string" },
-          "item": { "type": "string" }
-        },
-        "description": { "type": "string" }
-      },
-      "outputSchema": {
-        "team": "string"
+        "type": "object",
+        "properties": {
+          "problem": { "type": "string" },
+          "solution": { "type": "string" }
+        }
       }
     },
     {
@@ -130,17 +135,31 @@
       "subtype": "if",
       "position": [900, 120],
       "parameters": {
-        "field": { "type": "string" },
-        "operator": { "type": "string" },
-        "value": { "type": "string" },
-        "trueNodeName": { "type": "string" },
-        "falseNodeName": { "type": "string" }
+        "field": "{{json.team}}",
+        "operator": "==",
+        "value": "Others",
+        "trueNodeName": "End Node",
+        "falseNodeName": "MergeData"
       },
       "inputSchema": {
-        "team": { "type": "string" }
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "item": { "type": "string" },
+          "description": { "type": "string" },
+          "team": { "type": "string" },
+          "team_email": { "type": "string" }
+        }
       },
       "outputSchema": {
-        "team": { "type": "string" }
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "item": { "type": "string" },
+          "description": { "type": "string" },
+          "team": { "type": "string" },
+          "team_email": { "type": "string" }
+        }
       }
     },
     {
@@ -150,14 +169,47 @@
       "position": [1000, 200],
       "parameters": {},
       "inputSchema": {
-        "image": { "type": "string" },
-        "comment": { "type": "string" },
-        "team": { "type": "string" }
+        "type": { "type": "object" },
+        "properties": {
+          "brand-1": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "item": { "type": "string" },
+              "description": { "type": "string" },
+              "team": { "type": "string" },
+              "team_email": { "type": "string" }
+            }
+          },
+          "brand-2": {
+            "type": "object",
+            "properties": {
+              "problem": { "type": "string" },
+              "solution": { "type": "string" }
+            }
+          },
+          "brand-3": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string" },
+              "client_email": { "type": "string" }
+            }
+          }
+        }
       },
       "outputSchema": {
-        "image": { "type": "string" },
-        "comment": { "type": "string" },
-        "team": { "type": "string" }
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "item": { "type": "string" },
+          "description": { "type": "string" },
+          "team": { "type": "string" },
+          "team_email": { "type": "string" },
+          "problem": { "type": "string" },
+          "solution": { "type": "string" },
+          "client_email": { "type": "string" },
+          "date": { "type": "string" }
+        }
       }
     },
     {
@@ -169,79 +221,81 @@
         "database": { "type": "string" },
         "table": { "type": "string" },
         "fields": {
-          "team": { "type": "string" },
           "image": { "type": "string" },
-          "comment": { "type": "string" }
+          "problem": { "type": "string" },
+          "team": { "type": "string" },
+          "date": { "type": "string" },
+          "client_email": { "type": "string" }
         },
         "credentials": {
-          "type": "string",
-          "fields": {
+          "type": "object",
+          "properties": {
             "API_KEY": { "type": "string" },
             "API_SECRET": { "type": "string" }
           }
         }
       },
       "inputSchema": {
-        "image": { "type": "string" },
-        "comment": { "type": "string" },
-        "team": { "type": "string" }
+        "type": "object",
+        "properties": {
+          "image": { "type": "string" },
+          "problem": { "type": "string" },
+          "team": { "type": "string" },
+          "date": { "type": "string" },
+          "client_email": { "type": "string" }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "TeamEMail",
+      "type": "output",
+      "subtype": "mail-writer",
+      "position": [1300, 200],
+      "parameters": {
+        "to": "{{json.team_email}}",
+        "subject": "User's feedback {{json.item}}",
+        "body": { "type": "string" }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image": { "type": "string" },
+          "item": { "type": "string" },
+          "problem": { "type": "string" },
+          "solution": { "type": "string" },
+          "date": { "type": "string" },
+          "team_email": { "type": "string" }
+        }
       },
       "outputSchema": {
         "status": { "type": "string" }
       }
     },
     {
-      "name": "TeamMail",
+      "name": "ClientEmail",
       "type": "output",
       "subtype": "mail-writer",
       "position": [1300, 200],
       "parameters": {
-        "to": { "type": "string" },
+        "to": "{{json.client_email}}",
         "subject": { "type": "string" },
         "body": { "type": "string" }
       },
       "inputSchema": {
-        "image": { "type": "string" },
-        "comment": { "type": "string" },
-        "team": { "type": "string" }
-      },
-      "outputSchema": {
-        "status": { "type": "string" }
-      }
-    },
-    {
-      "name": "ClientMail",
-      "type": "output",
-      "subtype": "mail-writer",
-      "position": [1300, 200],
-      "parameters": {
-        "to": { "type": "string" },
-        "subject": { "type": "string" },
-        "body": { "type": "string" }
-      },
-      "inputSchema": {
-        "problem": { "type": "string" },
-        "solution": { "type": "string" }
-      },
-      "outputSchema": {
-        "status": { "type": "string" }
-      }
-    },
-    {
-      "name": "SellerMail",
-      "type": "output",
-      "subtype": "mail-writer",
-      "position": [1300, 200],
-      "parameters": {
-        "to": { "type": "string" },
-        "subject": { "type": "string" },
-        "body": { "type": "string" }
-      },
-      "inputSchema": {
-        "image": { "type": "string" },
-        "comment": { "type": "string" },
-        "team": { "type": "string" },
-        "solution": { "type": "string" }
+        "type": "object",
+        "properties": {
+          "item": { "type": "string" },
+          "problem": { "type": "string" },
+          "solution": { "type": "string" },
+          "date": { "type": "string" },
+          "client_email": { "type": "string" }
+        }
       },
       "outputSchema": {
         "status": { "type": "string" }
@@ -264,13 +318,11 @@
       ]
     },
     "NaverImageAnalyze": {
-      "main": [[{ "targetNode": "AssignTeam", "inputIndex": 0 }]]
-    },
-    "AssignTeam": {
       "main": [[{ "targetNode": "CheckTeamCondition", "inputIndex": 0 }]]
     },
     "CheckTeamCondition": {
-      "main": [[{ "targetNode": "MergeData", "inputIndex": 0 }]]
+      "main": [[{ "targetNode": "MergeData", "inputIndex": 0 }]],
+      "sub": [[{ "targetNode": "End Node", "inputIndex": 0 }]]
     },
     "NaverTextAnalyze": {
       "main": [[{ "targetNode": "MergeData", "inputIndex": 0 }]]
@@ -278,9 +330,8 @@
     "MergeData": {
       "main": [
         [{ "targetNode": "SaveToDB", "inputIndex": 0 }],
-        [{ "targetNode": "TeamMail", "inputIndex": 0 }],
-        [{ "targetNode": "ClientMail", "inputIndex": 0 }],
-        [{ "targetNode": "SellerMail", "inputIndex": 0 }]
+        [{ "targetNode": "TeamEmail", "inputIndex": 0 }],
+        [{ "targetNode": "ClientEmail", "inputIndex": 0 }]
       ]
     }
   }
