@@ -6,6 +6,7 @@ import Layout from "./components/layout/Layout";
 import NotFoundPage from "./pages/notfoundpage/NotFoundPage";
 import WorkspaceDetail from "./pages/workspaces/WorkspaceDetail";
 import Workflow from "./pages/workflow/Workflow";
+import LandingPage from "./pages/landing/LandingPage";
 
 import "./index.css";
 
@@ -14,6 +15,10 @@ function App() {
     <Router>
       <Routes>
         {/* First page (Landing Page) */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Authentication pages */}
+        {/* Auth page */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -22,11 +27,11 @@ function App() {
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/workspaces/:id" element={<WorkspaceDetail />} />
         </Route>
-        
+
         {/* Workflow page (standalone, no Layout) */}
         <Route path="/workflow" element={<Workflow />} />
         <Route path="/workflow/:id" element={<Workflow />} />
-        
+
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>

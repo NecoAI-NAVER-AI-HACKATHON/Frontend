@@ -46,9 +46,7 @@ export default function Login() {
         <div className="flex items-center text-white">
           <div className="w-full pl-8 pr-6 py-14 md:pl-16 lg:pl-24">
             <div className="mb-8 flex items-center gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/95 font-black text-[#2f2268]">
-                N
-              </div>
+              <img src="/logo.png" alt="Logo" className="w-10 h-10" />
               <div>
                 <p className="text-lg font-semibold tracking-wide">NecoAI</p>
                 <p className="text-xs text-white/70">Automate smarter</p>

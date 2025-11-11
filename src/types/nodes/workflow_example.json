@@ -1,6 +1,4 @@
 {
-  "id": "wf-feedback-daily",
-  "name": "Daily Feedback Batch Processor",
   "nodes": [
     {
       "name": "DailyTrigger",

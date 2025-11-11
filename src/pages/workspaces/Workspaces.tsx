@@ -103,9 +103,9 @@ const Workspaces = () => {
       <div className="flex-1 flex flex-col bg-white px-10">
         {/* Headers */}
         <div className="flex flex-col mt-5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-[#5C46FC]">
             <LayoutDashboard />
-            <p className="text-xl font-medium">Workspace</p>
+            <p className="text-xl font-medium">Workspaces</p>
           </div>
           <p className="font-medium text-[#627193]">
             Manage your AI projects and workflows in one place.
@@ -113,7 +113,7 @@ const Workspaces = () => {
         </div>
 
         {/* Control bar */}
-        <div className="flex flex-col mt-5">
+        <div className="flex flex-col mt-10">
           {/* Search bar */}
           <div className="flex items-center border border-gray-300 rounded-lg px-2 py-1 bg-[#F6F6F6] w-70">
             <Search className="w-4 h-4 text-gray-500 mr-2" />
@@ -210,7 +210,7 @@ const Workspaces = () => {
         </div>
 
         {/* Workspace cards */}
-        <div className="grid grid-cols-3 gap-5 mt-5">
+        <div className="grid grid-cols-3 gap-5 mt-10">
           {/* Create new workspace button */}
           <div
             className="flex flex-col items-center justify-center gap-2 bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer hover:bg-[#EDEDED] transition duration-300 ease-in-out"

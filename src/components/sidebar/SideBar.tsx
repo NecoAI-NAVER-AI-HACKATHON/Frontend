@@ -3,6 +3,7 @@ import {
   Settings,
   CircleQuestionMark,
   LogOut,
+  BookOpen,
   ChartColumnBig,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -35,6 +36,11 @@ const SideBar = () => {
       title: "Help",
       icon: CircleQuestionMark,
       link: "/helps",
+    },
+    {
+      title: "Documents",
+      icon: BookOpen,
+      link: "/documents",
     },
     {
       title: "Logout",

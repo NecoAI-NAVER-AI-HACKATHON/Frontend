@@ -18,6 +18,7 @@ export type AuthUser = {
 export const AuthService = {
   async login(payload: LoginPayload): Promise<AuthUser> {
     const { data } = await api.post(API.AUTH.LOGIN, payload);
+    localStorage.setItem("access_token", data.access_token);
 
     return {
       id: data.user?.id,
@@ -39,7 +40,6 @@ export const AuthService = {
       name: user?.user_metadata?.name || user?.email,
     };
   },
-
 
   async me(): Promise<AuthUser> {
     const { data } = await api.get(API.AUTH.ME);
