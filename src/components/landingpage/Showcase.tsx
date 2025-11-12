@@ -26,7 +26,7 @@ const Showcase = () => {
     {
       title: "Dashboard",
       icon: ChartColumn,
-      img: "Feature 4 description",
+      img: "/dashboard.svg",
     },
   ];
 

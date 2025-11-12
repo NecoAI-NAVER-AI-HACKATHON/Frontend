@@ -18,12 +18,12 @@ const SideBar = () => {
     {
       title: "Workspaces",
       icon: LayoutDashboard,
-      link: "/workspace",
+      link: "/workspaces",
     },
     {
       title: "Dashboards",
       icon: ChartColumnBig,
-      link: "/dashboards",
+      link: "/dashboard",
     },
     {
       title: "Settings",

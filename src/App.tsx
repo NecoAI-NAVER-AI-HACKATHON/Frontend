@@ -7,6 +7,8 @@ import NotFoundPage from "./pages/notfoundpage/NotFoundPage";
 import WorkspaceDetail from "./pages/workspaces/WorkspaceDetail";
 import Workflow from "./pages/workflow/Workflow";
 import LandingPage from "./pages/landing/LandingPage";
+import Dashboard from "./pages/dashboard/Dashboard";
+import Settings from "./pages/settings/Settings";
 
 import "./index.css";
 
@@ -26,6 +28,8 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/workspaces/:id" element={<WorkspaceDetail />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
 
         {/* Workflow page (standalone, no Layout) */}
