@@ -1,3 +1,5 @@
+import React from "react";
+
 const naverAIModules = [
   "HyperCLOVA X",
   "CLOVA Studio",
@@ -13,17 +15,42 @@ const naverAIModules = [
 
 const AICarousel = () => {
   return (
-    <div className="relative overflow-hidden py-5 w-full">
-      <div className="flex animate-marquee gap-16 w-max">
-        {[...naverAIModules, ...naverAIModules].map((name, index) => (
-          <span
-            key={index}
-            className="text-gray-700 text-lg font-medium hover:text-[#5C46FC] transition-colors whitespace-nowrap"
-          >
-            {name}
-          </span>
-        ))}
+    <div className="w-full bg-white py-10 px-50">
+      <div className="relative overflow-hidden">
+        <div
+          className="flex whitespace-nowrap gap-16"
+          style={{
+            animation: "marquee-rtl 15s linear infinite",
+          }}
+        >
+          {/* First set */}
+          {naverAIModules.map((name, index) => (
+            <span
+              key={`first-${index}`}
+              className="text-gray-700 text-lg font-medium transition-colors cursor-default inline-block"
+            >
+              {name}
+            </span>
+          ))}
+          {/* Duplicate set for seamless loop */}
+          {naverAIModules.map((name, index) => (
+            <span
+              key={`second-${index}`}
+              className="text-gray-700 text-lg font-medium transition-colors cursor-default inline-block"
+            >
+              {name}
+            </span>
+          ))}
+        </div>
       </div>
+
+      {/* Add keyframes inline for testing */}
+      <style>{`
+        @keyframes marquee-rtl {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
     </div>
   );
 };

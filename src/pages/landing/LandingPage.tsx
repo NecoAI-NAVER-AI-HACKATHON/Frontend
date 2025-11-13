@@ -1,6 +1,6 @@
-import Showcase from "@/components/landingpage/showcase";
+import Showcase from "@/components/landingpage/Showcase";
 import LandingTopbar from "@/components/topbar/LandingTopbar";
-import { ArrowUpRight, BadgeCheck } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import NaverAIShowcase from "@/components/landingpage/NaverAIShowcase";
 import WorkingShowcase from "@/components/landingpage/WorkingShowcase";
@@ -14,14 +14,22 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="flex flex-col bg-[#CCEFFF] justify-start py-5 px-25">
+      {/* <div className="flex flex-col bg-[#CCEFFF] justify-start py-5 px-25"> */}
+      <div className="flex flex-col bg-[radial-gradient(circle_at_40%_35%,rgba(150,120,255,0.35),transparent_25%),radial-gradient(circle_at_60%_65%,rgba(120,255,255,0.30),transparent_30%)] bg-white justify-start py-5 px-25">
         <LandingTopbar />
         <div className="flex flex-col mt-10 pb-10">
           {/* Header */}
           <div className="flex flex-col justify-center items-center text-center px-[120px]">
             <p className="text-[3rem] font-bold">
               Automate smarter with{" "}
-              <span className="text-[#03C158]">Naver AI</span>
+              <a
+                href="https://clova.ai/en/naver-ai-product"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#03C158]"
+              >
+                Naver AI
+              </a>
             </p>
             <p className="text-[3rem] font-bold">
               Build, connect, and scale{" "}
@@ -86,15 +94,15 @@ const LandingPage = () => {
 
           {/* Navigate button */}
           <div className="flex items-center gap-5 justify-center mt-5">
-            <div className="bg-[#5C46FC] text-white px-4 py-3 rounded-md">
-              Contact Us
+            <div className="flex items-center text-[#5C46FC] font-medium">
+              <p className="">Contact us</p>
             </div>
+
             <div
-              className="flex items-center gap-2 text-[#5C46FC] cursor-pointer"
+              className="bg-[#5C46FC] hover:bg-[#4534BF] transition-colors duration-200 ease-in-out text-white font-medium px-8 py-2 rounded-md cursor-pointer"
               onClick={() => navigate("/login")}
             >
-              <p className="font-medium">Login</p>
-              <ArrowUpRight className="w-4 h-4" />
+              Login
             </div>
           </div>
 

@@ -30,7 +30,7 @@ const WorkingShowcase = () => {
       {/* Header */}
       <div className="flex flex-col justify-center items-center text-center mb-10">
         <p className="text-[5rem] font-bold text-transparent [-webkit-text-stroke:2px_#8691FF]">
-          HOW IT WORKS
+          HOW NECOAI WORKS
         </p>
       </div>
 

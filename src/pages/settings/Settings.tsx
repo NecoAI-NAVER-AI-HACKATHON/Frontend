@@ -65,7 +65,7 @@ const Settings = () => {
   return (
     <div className="flex flex-col h-screen bg-[#F8FAFF]">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white shadow-sm">
+      <div className="sticky top-0 z-20 bg-white">
         <TopBar />
         <hr className="border-gray-200" />
       </div>

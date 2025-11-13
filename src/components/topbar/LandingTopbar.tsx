@@ -1,4 +1,4 @@
-import { ChevronDown, LogIn } from "lucide-react";
+import { ChevronDown, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const LandingTopbar = () => {
@@ -47,16 +47,16 @@ const LandingTopbar = () => {
       </div>
 
       {/* Login and contact button */}
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center border text-[#5C46FC] border-[#5C46FC] px-3 py-2 rounded-md text-sm">
+          <p className="">Contact us</p>
+        </div>
+
         <div
-          className="flex items-center font-medium gap-1 cursor-pointer"
+          className="border bg-[#5C46FC] hover:bg-[#4534BF] transition-colors duration-200 ease-in-out text-white px-5 py-2 rounded-md text-sm cursor-pointer"
           onClick={() => navigate("/login")}
         >
-          <LogIn className="w-4 h-4 text-[#5C46FC]" />
-          <p className="">Login</p>
-        </div>
-        <div className="bg-[#5C46FC] text-white px-3 py-2 rounded-md text-sm">
-          Contact Us
+          Login
         </div>
       </div>
     </div>

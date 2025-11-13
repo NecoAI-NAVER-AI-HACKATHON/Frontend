@@ -19,9 +19,12 @@ import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkspaceService } from "@/lib/services/workspaceService";
+import WorkspacesSkeleton from "@/components/workspaces/WorkspacesSkeleton";
 
 const Workspaces = () => {
   const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(true);
 
   // Variables for modal
   const [showAddingWorkspace, setShowAddingWorkspace] =
@@ -87,6 +90,8 @@ const Workspaces = () => {
         setTotalItems(response.total);
       } catch (error) {
         console.log(error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -94,13 +99,16 @@ const Workspaces = () => {
   }, []);
 
   return (
-    <div className="flex flex-col">
+    <div
+      className="min-h-screen w-full
+  bg-[radial-gradient(circle_at_40%_35%,rgba(150,120,255,0.35),transparent_25%),radial-gradient(circle_at_60%_65%,rgba(120,255,255,0.30),transparent_30%)]
+  bg-white flex flex-col"
+    >
       {/* Top Bar */}
       <TopBar />
       <hr className="border-gray-300" />
-
       {/* Workspace */}
-      <div className="flex-1 flex flex-col bg-white px-10">
+      <div className="flex-1 flex flex-col px-10">
         {/* Headers */}
         <div className="flex flex-col mt-5">
           <div className="flex items-center gap-2 text-[#5C46FC]">
@@ -211,7 +219,7 @@ const Workspaces = () => {
 
         {/* Workspace cards */}
         <div className="grid grid-cols-3 gap-5 mt-10">
-          {/* Create new workspace button */}
+          {/* Always at the top */}
           <div
             className="flex flex-col items-center justify-center gap-2 bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer hover:bg-[#EDEDED] transition duration-300 ease-in-out"
             onClick={() => setShowAddingWorkspace(true)}
@@ -223,67 +231,64 @@ const Workspaces = () => {
             <p className="text-xs">Create a new workspace</p>
           </div>
 
-          {/* Workspace cards */}
-          {workspaces.map((workspace: Workspace) => (
-            <div
-              key={workspace.id}
-              className="bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer 
-               transition duration-300 ease-in-out
-               hover:bg-[#F9FAFB] hover:shadow-lg hover:-translate-y-1"
-              onClick={() => navigate(`/workspaces/${workspace.id}`)}
-            >
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center justify-center rounded-md w-10 h-10 text-[#5757F5] border border-gray-300">
-                    <FolderOpen />
-                  </div>
-                  <div className="text-[#627193]">
-                    <ChevronRight />
-                  </div>
-                </div>
-
-                {/* Workspace name */}
-                <p className="text-sm font-medium">{workspace.name}</p>
-
-                {/* Workspace description */}
-                <p className="text-xs">{workspace.description}</p>
-
-                {/* Workspace created time and status */}
-                <div className="flex items-center justify-between mt-3">
-                  {/* Created at information */}
-                  <div className="flex items-center gap-2">
-                    <Clock className="text-[#627193] w-5 h-5" />
-                    <p className="text-xs font-medium text-[#627193]">
-                      {dayjs(workspace.created_at).format("YYYY-MMM-DD")}
-                    </p>
+          {/* If loading → only skeleton cards appear */}
+          {loading ? (
+            <WorkspacesSkeleton />
+          ) : (
+            workspaces.map((workspace) => (
+              <div
+                key={workspace.id}
+                className="bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer 
+        transition duration-300 ease-in-out
+        hover:bg-[#F9FAFB] hover:shadow-lg hover:-translate-y-1"
+                onClick={() => navigate(`/workspaces/${workspace.id}`)}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-center rounded-md w-10 h-10 text-[#5757F5] border border-gray-300">
+                      <FolderOpen />
+                    </div>
+                    <div className="text-[#627193]">
+                      <ChevronRight />
+                    </div>
                   </div>
 
-                  {/* Systems counts information */}
-                  <div className="flex items-center gap-2">
-                    <Waypoints className="text-[#627193] w-5 h-5" />
-                    <p className="text-xs font-medium text-[#627193]">
-                      {workspace.systems_count}
-                    </p>
-                  </div>
+                  <p className="text-sm font-medium">{workspace.name}</p>
+                  <p className="text-xs">{workspace.description}</p>
 
-                  <div
-                    className={`rounded-md px-2 py-1 text-xs font-medium ${
-                      workspace.status === "active"
-                        ? "border border-[#37a14e] text-[#37a14e]"
-                        : workspace.status === "inactive"
-                        ? "border border-gray-400 text-gray-400"
-                        : "border border-yellow-500 text-yellow-500"
-                    }`}
-                  >
-                    {workspace.status}
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="text-[#627193] w-5 h-5" />
+                      <p className="text-xs font-medium text-[#627193]">
+                        {dayjs(workspace.created_at).format("YYYY-MMM-DD")}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Waypoints className="text-[#627193] w-5 h-5" />
+                      <p className="text-xs font-medium text-[#627193]">
+                        {workspace.systems_count}
+                      </p>
+                    </div>
+
+                    <div
+                      className={`rounded-md px-2 py-1 text-xs font-medium ${
+                        workspace.status === "active"
+                          ? "border border-[#37a14e] text-[#37a14e]"
+                          : workspace.status === "inactive"
+                          ? "border border-gray-400 text-gray-400"
+                          : "border border-yellow-500 text-yellow-500"
+                      }`}
+                    >
+                      {workspace.status}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
-
       {/* Modal Create Workspace */}
       {showAddingWorkspace && (
         <WorkspaceAdding setShowAddingWorkspace={setShowAddingWorkspace} />

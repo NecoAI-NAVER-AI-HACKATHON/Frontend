@@ -17,7 +17,7 @@ const TopBar = () => {
   };
 
   return (
-    <div className="flex items-center justify-between h-16 bg-white px-10 shadow-sm">
+    <div className="flex items-center justify-between h-16 bg-white px-10">
       {/* Breadcrumb Section */}
       <div className="flex items-center gap-2 text-[#627193]">
         {pathSegments.length === 0 ? (

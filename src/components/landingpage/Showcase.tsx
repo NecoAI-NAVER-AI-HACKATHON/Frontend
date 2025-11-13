@@ -11,7 +11,7 @@ const Showcase = () => {
     {
       title: "Workplace management",
       icon: LayoutDashboard,
-      img: "/workspace-management.svg",
+      img: "/workspace-management.png",
     },
     {
       title: "System builder",
@@ -26,7 +26,7 @@ const Showcase = () => {
     {
       title: "Dashboard",
       icon: ChartColumn,
-      img: "/dashboard.svg",
+      img: "/dashboard.png",
     },
   ];
 
@@ -51,7 +51,7 @@ const Showcase = () => {
                 <div className="flex items-center gap-3 px-10">
                   <Icon
                     className={`h-5 w-5 ${
-                      isActive ? "text-[#5C46FC]" : "text-gray-400"
+                      isActive ? "text-[#5C46FC]" : ""
                     } transition-colors`}
                   />
                   <p
@@ -78,7 +78,7 @@ const Showcase = () => {
       </div>
 
       {/* Feature Preview */}
-      <div className="bg-[#B2E8FF] p-10 rounded-xl flex justify-center">
+      <div className="bg-white shadow-lg p-10 rounded-xl flex justify-center">
         <img
           src={features[activeFeature].img}
           alt={features[activeFeature].title}

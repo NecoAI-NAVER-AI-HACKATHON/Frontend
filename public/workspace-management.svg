@@ -2,7 +2,7 @@
 <rect x="71" width="1918" height="868" rx="30" fill="url(#pattern0_968_8)"/>
 <g filter="url(#filter0_d_968_8)">
 <rect x="7" y="372" width="498" height="539" rx="30" fill="url(#pattern1_968_8)" shape-rendering="crispEdges"/>
-<rect x="5.5" y="370.5" width="501" height="542" rx="31.5" stroke="#959292" stroke-width="3" shape-rendering="crispEdges"/>
+<rect x="5.5" y="370.5" width="501" height="542" rx="31.5" stroke="#5C46FC" stroke-width="3" shape-rendering="crispEdges"/>
 </g>
 <defs>
 <pattern id="pattern0_968_8" patternContentUnits="objectBoundingBox" width="1" height="1">
