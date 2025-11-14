@@ -7,7 +7,7 @@ const Logs = () => {
   return (
     <div className="flex flex-col">
       {/* Logs content */}
-      <div className="flex flex-col bg-white">
+      <div className="flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mt-5">
           {/* Header */}
@@ -33,7 +33,7 @@ const Logs = () => {
         {LogsData.length > 0 && (
           <div className="mt-3 border border-gray-300 rounded-xl overflow-hidden">
             <table className="min-w-full text-sm text-left">
-              <thead className="bg-[#F9FAFB] text-[#5757F5] border-b border-gray-200">
+              <thead className="text-[#5757F5] border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-2 font-medium">#</th>
                   <th className="px-4 py-2 font-medium">Log ID</th>

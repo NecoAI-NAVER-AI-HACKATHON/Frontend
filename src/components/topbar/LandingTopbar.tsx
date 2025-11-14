@@ -11,9 +11,8 @@ const LandingTopbar = () => {
         {/* Logo and name */}
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="Logo" className="w-8 h-8" />
-          <p className="text-2xl font-medium">NecoAI</p>
+          <p className="text-2xl font-medium text-[#5C46FC]">NecoAI</p>
         </div>
-
         {/* Bussiness */}
         <div className="flex items-center gap-10">
           {/* Product button */}

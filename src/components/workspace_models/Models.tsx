@@ -12,7 +12,7 @@ const Models = () => {
   return (
     <div className="flex flex-col">
       {/* Models content */}
-      <div className="flex flex-col bg-white">
+      <div className="flex flex-col">
         {/* Header and Add model button */}
         <div className="flex items-center justify-between mt-5">
           {/* Header */}

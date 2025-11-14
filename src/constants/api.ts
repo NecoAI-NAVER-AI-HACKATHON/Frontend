@@ -18,11 +18,11 @@ export const API = {
   },
 
   WORKSPACE: {
-    WORKSPACES_LIST: "/workspace/",
+    WORKSPACES_LIST: "/workspaces/",
   },
 
   WORKFLOW: {
-    WORKFLOWS_LIST: (id: string) => `/workspace/${id}/systems`,
+    WORKFLOWS_LIST: (id: string) => `/workspaces/${id}/systems`,
   },
 
   // Add more domains as needed

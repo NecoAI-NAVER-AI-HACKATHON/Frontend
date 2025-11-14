@@ -31,13 +31,17 @@ const WorkspaceDetail = ({
   ];
 
   return (
-    <div className="flex flex-col h-screen">
+    <div
+      className="min-h-screen w-full
+  bg-[radial-gradient(circle_at_40%_35%,rgba(150,120,255,0.35),transparent_25%),radial-gradient(circle_at_60%_65%,rgba(120,255,255,0.30),transparent_30%)]
+  bg-white flex flex-col"
+    >
       {/* Top Bar */}
       <TopBar />
       <hr className="border-gray-300" />
 
       {/* Workspace */}
-      <div className="flex-1 flex flex-col bg-white px-10 overflow-y-auto">
+      <div className="flex-1 flex flex-col px-10 overflow-y-auto">
         {/* Headers */}
         <div className="flex flex-col mt-5">
           <div className="flex items-center gap-2">
