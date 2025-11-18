@@ -18,13 +18,36 @@ export type WorkspacesResponse = {
   total: number;
 };
 
+// Helper to get context if available
+let workspacesContext: { workspaces: Workspace[] } | null = null;
+
+export const setWorkspacesContext = (context: { workspaces: Workspace[] }) => {
+  workspacesContext = context;
+};
+
 export const WorkspaceService = {
   async getAllWorkspaces(): Promise<WorkspacesResponse> {
-    const { data } = await api.get(API.WORKSPACE.WORKSPACES_LIST);
+    // Try to use context first (localStorage)
+    if (workspacesContext) {
+      return {
+        workspaces: workspacesContext.workspaces,
+        total: workspacesContext.workspaces.length,
+      };
+    }
 
-    return {
-      workspaces: data.workspaces || [],
-      total: data.total || 0,
-    };
+    // Fallback to API
+    try {
+      const { data } = await api.get(API.WORKSPACE.WORKSPACES_LIST);
+      return {
+        workspaces: data.workspaces || [],
+        total: data.total || 0,
+      };
+    } catch (error) {
+      console.error("Error fetching workspaces from API:", error);
+      return {
+        workspaces: [],
+        total: 0,
+      };
+    }
   },
 };

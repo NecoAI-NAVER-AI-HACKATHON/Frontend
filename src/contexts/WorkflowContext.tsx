@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import type { WorkflowNode, ExecutionLog, Workflow } from "../types/workflow";
 
 interface WorkflowContextType {
@@ -13,6 +13,8 @@ interface WorkflowContextType {
   addNode: (node: WorkflowNode) => void;
   deleteNode: (nodeId: string) => void;
   addLog: (log: ExecutionLog) => void;
+  saveWorkflow: () => void;
+  updateWorkflowName: (name: string) => void;
 }
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
@@ -28,15 +30,19 @@ export const useWorkflow = () => {
 interface WorkflowProviderProps {
   children: ReactNode;
   initialWorkflow?: Workflow;
+  onWorkflowChange?: (workflow: Workflow) => void;
 }
 
-export const WorkflowProvider = ({ children, initialWorkflow }: WorkflowProviderProps) => {
+export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }: WorkflowProviderProps) => {
   const [workflow, setWorkflow] = useState<Workflow | null>(initialWorkflow || null);
   const [nodes, setNodes] = useState<WorkflowNode[]>(initialWorkflow?.nodes || []);
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // Update workflow when nodes change
+  // Ref to track if this is the initial load (to avoid saving on mount)
+  const isInitialLoad = useRef(true);
+
+  // Update workflow when nodes change and auto-save if WorkflowsContext is available
   useEffect(() => {
     if (workflow) {
       const updatedWorkflow: Workflow = {
@@ -53,10 +59,20 @@ export const WorkflowProvider = ({ children, initialWorkflow }: WorkflowProvider
       };
       setWorkflow(updatedWorkflow);
       
+      // Auto-save via callback if provided and not initial load
+      if (onWorkflowChange && !isInitialLoad.current && workflow.id) {
+        onWorkflowChange(updatedWorkflow);
+      }
+      
       // Console log the workflow state
       console.log("Workflow State Updated:", updatedWorkflow);
     }
-  }, [nodes, workflow?.id, workflow?.name]);
+    
+    // Mark initial load as complete after first render
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+    }
+  }, [nodes, workflow?.id, workflow?.name, onWorkflowChange]);
 
   const updateNode = useCallback((nodeId: string, updates: Partial<WorkflowNode>) => {
     setNodes((prev) =>
@@ -92,6 +108,28 @@ export const WorkflowProvider = ({ children, initialWorkflow }: WorkflowProvider
     setLogs((prev) => [log, ...prev]);
   }, []);
 
+  const saveWorkflow = useCallback(() => {
+    if (workflow && onWorkflowChange) {
+      onWorkflowChange(workflow);
+      console.log("Workflow manually saved:", workflow.id);
+    } else {
+      console.warn("Cannot save workflow: onWorkflowChange not available or workflow is null");
+    }
+  }, [workflow, onWorkflowChange]);
+
+  const updateWorkflowName = useCallback((name: string) => {
+    if (workflow) {
+      const updatedWorkflow: Workflow = {
+        ...workflow,
+        name,
+      };
+      setWorkflow(updatedWorkflow);
+      if (onWorkflowChange) {
+        onWorkflowChange(updatedWorkflow);
+      }
+    }
+  }, [workflow, onWorkflowChange]);
+
   const value: WorkflowContextType = {
     workflow,
     nodes,
@@ -104,6 +142,8 @@ export const WorkflowProvider = ({ children, initialWorkflow }: WorkflowProvider
     addNode,
     deleteNode,
     addLog,
+    saveWorkflow,
+    updateWorkflowName,
   };
 
   return <WorkflowContext.Provider value={value}>{children}</WorkflowContext.Provider>;

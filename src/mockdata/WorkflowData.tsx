@@ -1,17 +1,24 @@
 // WorkflowData.tsx
 import type { Workflow, WorkflowNode, ExecutionLog } from "../types/workflow";
 
-export const mockWorkflowId = "wf_001";
+export const mockWorkflowId = "sys-001"; // Matches the system ID in SystemsContext
 
 export const mockWorkflowNodes: WorkflowNode[] = [
   {
     id: "node-1",
-    type: "webhook",
-    name: "Webhook Trigger",
-    position: { x: 100, y: 100 },
+    type: "schedule",
+    name: "DailyTrigger",
+    position: { x: 100, y: 200 },
     config: {
-      name: "Webhook Trigger",
-      schedule: "",
+      name: "DailyTrigger",
+      subtype: "schedule",
+      parameters: {
+        mode: {
+          mode: "daily",
+          dailyTime: "12:00:00",
+        },
+        timezone: "Asia/Ho_Chi_Minh",
+      },
     },
     connections: {
       output: ["node-2"],
@@ -19,12 +26,16 @@ export const mockWorkflowNodes: WorkflowNode[] = [
   },
   {
     id: "node-2",
-    type: "hyperclova",
-    name: "HyperCLOVA",
-    position: { x: 400, y: 100 },
+    type: "json-parser",
+    name: "ExcelReader",
+    position: { x: 300, y: 200 },
     config: {
-      name: "HyperCLOVA",
-      model: "clova-x",
+      name: "ExcelReader",
+      subtype: "function",
+      parameters: {
+        language: "javascript",
+        code: "readBatchNewFeedbacks()",
+      },
     },
     connections: {
       input: ["node-1"],
@@ -33,11 +44,15 @@ export const mockWorkflowNodes: WorkflowNode[] = [
   },
   {
     id: "node-3",
-    type: "json-parser",
-    name: "JSON Parser",
-    position: { x: 700, y: 100 },
+    type: "filter",
+    name: "SplitInBatches",
+    position: { x: 500, y: 200 },
     config: {
-      name: "JSON Parser",
+      name: "SplitInBatches",
+      subtype: "split",
+      parameters: {
+        batchSize: 1,
+      },
     },
     connections: {
       input: ["node-2"],
@@ -46,11 +61,18 @@ export const mockWorkflowNodes: WorkflowNode[] = [
   },
   {
     id: "node-4",
-    type: "filter",
-    name: "Filter",
-    position: { x: 1000, y: 50 },
+    type: "hyperclova",
+    name: "NaverImageAnalyze",
+    position: { x: 700, y: 120 },
     config: {
-      name: "Filter",
+      name: "NaverImageAnalyze",
+      subtype: "image-analyze",
+      parameters: {
+        prompt: "Point out team is responsible for this product type, {{teams_data}}, {{json.image}}. If no team is responsible, return 'Others'.",
+        url: "https://naver.ai/image/analyze",
+        method: "POST",
+        apiKey: "",
+      },
     },
     connections: {
       input: ["node-3"],
@@ -59,49 +81,125 @@ export const mockWorkflowNodes: WorkflowNode[] = [
   },
   {
     id: "node-5",
-    type: "if-else",
-    name: "If/Else",
-    position: { x: 1000, y: 150 },
+    type: "hyperclova",
+    name: "NaverTextAnalyze",
+    position: { x: 700, y: 280 },
     config: {
-      name: "If/Else",
+      name: "NaverTextAnalyze",
+      subtype: "text-analyze",
+      parameters: {
+        prompt: "Analyze this user's feedback and return the problem and solution. {{json.comment}}",
+        url: "https://naver.ai/chat/analyze",
+        method: "POST",
+        apiKey: "",
+      },
     },
     connections: {
       input: ["node-3"],
-      output: ["node-6"],
+      output: ["node-7"],
     },
   },
   {
     id: "node-6",
-    type: "merge",
-    name: "Merge",
-    position: { x: 1300, y: 100 },
+    type: "if-else",
+    name: "CheckTeamCondition",
+    position: { x: 900, y: 120 },
     config: {
-      name: "Merge",
+      name: "CheckTeamCondition",
+      subtype: "if",
+      parameters: {
+        field: "{{json.team}}",
+        operator: "==",
+        value: "Others",
+        trueNodeName: "End Node",
+        falseNodeName: "MergeData",
+      },
     },
     connections: {
-      input: ["node-4", "node-5"],
+      input: ["node-4"],
       output: ["node-7"],
     },
   },
   {
     id: "node-7",
-    type: "http-request",
-    name: "HTTP Request",
-    position: { x: 1600, y: 100 },
+    type: "merge",
+    name: "MergeData",
+    position: { x: 1000, y: 200 },
     config: {
-      name: "HTTP Request",
-      url: "https://api.example.com/endpoint",
-      method: "POST",
+      name: "MergeData",
+      subtype: "function",
+      parameters: {},
     },
     connections: {
-      input: ["node-6"],
+      input: ["node-6", "node-5"],
+      output: ["node-8", "node-9", "node-10"],
+    },
+  },
+  {
+    id: "node-8",
+    type: "database",
+    name: "SaveToDB",
+    position: { x: 1100, y: 200 },
+    config: {
+      name: "SaveToDB",
+      subtype: "database_write",
+      parameters: {
+        database: "",
+        table: "",
+        fields: {
+          image: "",
+          problem: "",
+          team: "",
+          date: "",
+          client_email: "",
+        },
+      },
+    },
+    connections: {
+      input: ["node-7"],
+    },
+  },
+  {
+    id: "node-9",
+    type: "email",
+    name: "TeamEmail",
+    position: { x: 1300, y: 120 },
+    config: {
+      name: "TeamEmail",
+      subtype: "mail-writer",
+      parameters: {
+        to: "{{json.team_email}}",
+        subject: "User's feedback {{json.item}}",
+        body: "",
+      },
+    },
+    connections: {
+      input: ["node-7"],
+    },
+  },
+  {
+    id: "node-10",
+    type: "email",
+    name: "ClientEmail",
+    position: { x: 1300, y: 280 },
+    config: {
+      name: "ClientEmail",
+      subtype: "mail-writer",
+      parameters: {
+        to: "{{json.client_email}}",
+        subject: "",
+        body: "",
+      },
+    },
+    connections: {
+      input: ["node-7"],
     },
   },
 ];
 
 export const mockWorkflow: Workflow = {
   id: mockWorkflowId,
-  name: "summary agent",
+  name: "Daily Feedback Batch Processor",
   nodes: mockWorkflowNodes,
   connections: [
     { from: "node-1", to: "node-2" },
@@ -109,8 +207,11 @@ export const mockWorkflow: Workflow = {
     { from: "node-3", to: "node-4" },
     { from: "node-3", to: "node-5" },
     { from: "node-4", to: "node-6" },
-    { from: "node-5", to: "node-6" },
     { from: "node-6", to: "node-7" },
+    { from: "node-5", to: "node-7" },
+    { from: "node-7", to: "node-8" },
+    { from: "node-7", to: "node-9" },
+    { from: "node-7", to: "node-10" },
   ],
 };
 
