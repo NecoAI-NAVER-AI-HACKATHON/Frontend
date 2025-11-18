@@ -12,7 +12,7 @@ const Systems = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const workspace_id = id as string;
-  const { getSystemsByWorkspace, isLoading: contextLoading } = useSystems();
+  const { getSystemsByWorkspace, systems: allSystems, isLoading: contextLoading } = useSystems();
 
   const [systems, setSystems] = useState<System[]>([]);
   const [totalItems, setTotalItems] = useState<number>();
@@ -26,28 +26,25 @@ const Systems = () => {
     // Use context data if available, otherwise fetch from service
     if (!contextLoading) {
       const contextSystems = getSystemsByWorkspace(workspace_id);
-      if (contextSystems.length > 0) {
-        setSystems(contextSystems);
-        setTotalItems(contextSystems.length);
-        setLoading(false);
-        return;
-      }
+      setSystems(contextSystems);
+      setTotalItems(contextSystems.length);
+      setLoading(false);
+    } else {
+      // If context is still loading, try service as fallback
+      const fetchData = async () => {
+        try {
+          const response = await SystemService.getAllSystems(workspace_id);
+          setSystems(response.systems);
+          setTotalItems(response.total);
+        } catch (error) {
+          console.log(error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
     }
-
-    const fetchData = async () => {
-      try {
-        const response = await SystemService.getAllSystems(workspace_id);
-        setSystems(response.systems);
-        setTotalItems(response.total);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [workspace_id, getSystemsByWorkspace, contextLoading]);
+  }, [workspace_id, allSystems, contextLoading, getSystemsByWorkspace]);
 
   return (
     <div className="flex flex-col">

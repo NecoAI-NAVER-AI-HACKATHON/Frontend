@@ -86,24 +86,27 @@ const Workspaces = () => {
 
   useEffect(() => {
     // Use context data if available, otherwise fetch from service
-    if (!contextLoading && contextWorkspaces.length > 0) {
-      setWorkspaces(contextWorkspaces);
-      setTotalItems(contextWorkspaces.length);
+    if (!contextLoading) {
+      if (contextWorkspaces.length > 0) {
+        setWorkspaces(contextWorkspaces);
+        setTotalItems(contextWorkspaces.length);
+      } else {
+        // If context is empty, try service
+        const fetchData = async () => {
+          try {
+            const response = await WorkspaceService.getAllWorkspaces();
+            setWorkspaces(response.workspaces);
+            setTotalItems(response.total);
+          } catch (error) {
+            console.log(error);
+          } finally {
+            setLoading(false);
+          }
+        };
+        fetchData();
+        return;
+      }
       setLoading(false);
-    } else {
-      const fetchData = async () => {
-        try {
-          const response = await WorkspaceService.getAllWorkspaces();
-          setWorkspaces(response.workspaces);
-          setTotalItems(response.total);
-        } catch (error) {
-          console.log(error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchData();
     }
   }, [contextWorkspaces, contextLoading]);
 

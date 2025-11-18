@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import WorkflowNav from "../../components/workflow/WorkflowNav";
 import NodeBarSection from "../../components/workflow/NodeBarSection";
@@ -56,39 +56,57 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
   );
   const [showConfig, setShowConfig] = useState(false);
 
-  // Load nodes from workflow when workflow changes
+  // Track the workflow ID we've initialized for
+  const initializedWorkflowId = useRef<string | null>(null);
+  const workflowNodesRef = useRef<WorkflowNode[]>([]);
+
+  // Load nodes from workflow only on initial load or when workflow ID changes
   useEffect(() => {
-    if (workflow) {
-      // Load nodes from the workflow
-      if (workflow.nodes && workflow.nodes.length > 0) {
-        setNodes(workflow.nodes);
-        // Select first node by default if none selected
-        if (!selectedNodeId && workflow.nodes.length > 0) {
-          setSelectedNodeId(workflow.nodes[0].id);
-          setSelectedNodeType(workflow.nodes[0].type);
+    const currentWorkflowId = workflow?.id || null;
+    
+    // Only initialize if this is a new workflow (ID changed)
+    if (currentWorkflowId !== initializedWorkflowId.current) {
+      if (workflow) {
+        // Initial load - sync nodes from workflow
+        if (workflow.nodes && workflow.nodes.length > 0) {
+          setNodes(workflow.nodes);
+          workflowNodesRef.current = workflow.nodes;
+          // Select first node by default if none selected
+          if (workflow.nodes.length > 0) {
+            setSelectedNodeId(workflow.nodes[0].id);
+            setSelectedNodeType(workflow.nodes[0].type);
+          }
+        } else {
+          // Empty workflow - no nodes yet
+          setNodes([]);
+          workflowNodesRef.current = [];
+          setSelectedNodeId(null);
         }
-      } else {
-        // Empty workflow - no nodes yet
+        initializedWorkflowId.current = currentWorkflowId;
+      } else if (isMockWorkflow && currentWorkflowId === mockWorkflowId) {
+        // Fallback for mock workflow
+        setNodes(mockWorkflowNodes);
+        workflowNodesRef.current = mockWorkflowNodes;
+        setLogs(mockExecutionLogs);
+        if (mockWorkflowNodes.length > 0) {
+          setSelectedNodeId(mockWorkflowNodes[0].id);
+          setSelectedNodeType(mockWorkflowNodes[0].type);
+          setShowConfig(true);
+        }
+        initializedWorkflowId.current = mockWorkflowId;
+      } else if (!workflow && !isMockWorkflow) {
+        // No workflow loaded yet
         setNodes([]);
+        workflowNodesRef.current = [];
+        setLogs([]);
         setSelectedNodeId(null);
+        setShowConfig(false);
+        initializedWorkflowId.current = null;
       }
-    } else if (isMockWorkflow) {
-      // Fallback for mock workflow
-      setNodes(mockWorkflowNodes);
-      setLogs(mockExecutionLogs);
-      if (mockWorkflowNodes.length > 0) {
-        setSelectedNodeId(mockWorkflowNodes[0].id);
-        setSelectedNodeType(mockWorkflowNodes[0].type);
-        setShowConfig(true);
-      }
-    } else {
-      // No workflow loaded yet
-      setNodes([]);
-      setLogs([]);
-      setSelectedNodeId(null);
-      setShowConfig(false);
     }
-  }, [workflow, isMockWorkflow, setNodes, setLogs, setSelectedNodeId, selectedNodeId]);
+    // Only depend on workflow ID, not the whole workflow object or selectedNodeId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflow?.id, isMockWorkflow]);
 
   // Handlers
   const handleNodeSelect = useCallback((nodeDef: NodeDefinition) => {
@@ -371,9 +389,10 @@ const Workflow = () => {
     loadWorkflow();
   }, [id, workspaceId, systemId, isMockWorkflow, getWorkflow, createWorkflow]);
 
-  // Handle workflow changes (auto-save)
+  // Handle workflow changes (only when explicitly saved)
   const handleWorkflowChange = useCallback((workflow: Workflow) => {
     if (workflow && !isMockWorkflow) {
+      // This is called only when saveWorkflow is explicitly called
       saveWorkflow(workflow);
     }
   }, [saveWorkflow, isMockWorkflow]);

@@ -42,7 +42,8 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
   // Ref to track if this is the initial load (to avoid saving on mount)
   const isInitialLoad = useRef(true);
 
-  // Update workflow when nodes change and auto-save if WorkflowsContext is available
+  // Update workflow state locally when nodes change (but don't auto-save)
+  // This keeps the workflow object in sync for UI purposes
   useEffect(() => {
     if (workflow) {
       const updatedWorkflow: Workflow = {
@@ -57,22 +58,20 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
           return acc;
         }, [] as Array<{ from: string; to: string }>),
       };
-      setWorkflow(updatedWorkflow);
-      
-      // Auto-save via callback if provided and not initial load
-      if (onWorkflowChange && !isInitialLoad.current && workflow.id) {
-        onWorkflowChange(updatedWorkflow);
+      // Only update workflow state if nodes actually changed (prevent unnecessary updates)
+      const nodesChanged = JSON.stringify(workflow.nodes) !== JSON.stringify(nodes);
+      if (nodesChanged) {
+        setWorkflow(updatedWorkflow);
+        // Don't auto-save - only update local state
+        console.log("Workflow State Updated (local only):", updatedWorkflow);
       }
-      
-      // Console log the workflow state
-      console.log("Workflow State Updated:", updatedWorkflow);
     }
     
     // Mark initial load as complete after first render
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
     }
-  }, [nodes, workflow?.id, workflow?.name, onWorkflowChange]);
+  }, [nodes, workflow?.id, workflow?.name]);
 
   const updateNode = useCallback((nodeId: string, updates: Partial<WorkflowNode>) => {
     setNodes((prev) =>
@@ -109,13 +108,35 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
   }, []);
 
   const saveWorkflow = useCallback(() => {
-    if (workflow && onWorkflowChange) {
-      onWorkflowChange(workflow);
-      console.log("Workflow manually saved:", workflow.id);
+    if (workflow) {
+      // Build the current workflow state from nodes
+      const currentWorkflow: Workflow = {
+        ...workflow,
+        nodes,
+        connections: nodes.reduce((acc, node) => {
+          if (node.connections?.output) {
+            node.connections.output.forEach((targetId) => {
+              acc.push({ from: node.id, to: targetId });
+            });
+          }
+          return acc;
+        }, [] as Array<{ from: string; to: string }>),
+      };
+      
+      // Update local workflow state
+      setWorkflow(currentWorkflow);
+      
+      // Persist to storage via callback if provided
+      if (onWorkflowChange) {
+        onWorkflowChange(currentWorkflow);
+        console.log("Workflow manually saved:", currentWorkflow.id);
+      } else {
+        console.warn("Cannot save workflow: onWorkflowChange not available");
+      }
     } else {
-      console.warn("Cannot save workflow: onWorkflowChange not available or workflow is null");
+      console.warn("Cannot save workflow: workflow is null");
     }
-  }, [workflow, onWorkflowChange]);
+  }, [workflow, nodes, onWorkflowChange]);
 
   const updateWorkflowName = useCallback((name: string) => {
     if (workflow) {
@@ -124,11 +145,9 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
         name,
       };
       setWorkflow(updatedWorkflow);
-      if (onWorkflowChange) {
-        onWorkflowChange(updatedWorkflow);
-      }
+      // Don't auto-save name changes - only update local state
     }
-  }, [workflow, onWorkflowChange]);
+  }, [workflow]);
 
   const value: WorkflowContextType = {
     workflow,
