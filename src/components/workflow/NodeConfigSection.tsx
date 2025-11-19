@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { X, Plus, Trash2, Info } from "lucide-react";
 import type { WorkflowNode } from "../../types/workflow";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -314,13 +314,24 @@ const NodeConfigSection = ({
         />
       );
     } else if (key === "code" || key === "prompt" || key === "body") {
+      const isFunctionCode = key === "code" && node.type === "function";
       inputElement = (
-        <textarea
-          className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-          value={value || ""}
-          onChange={(e) => handleNestedConfigChange(fullPath, e.target.value)}
-          placeholder={`Enter ${key}`}
-        />
+        <div className="space-y-2">
+          <textarea
+            className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            value={value || ""}
+            onChange={(e) => handleNestedConfigChange(fullPath, e.target.value)}
+            placeholder={`Enter ${key}`}
+          />
+          {isFunctionCode && (
+            <div className="flex items-start gap-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-blue-700">
+                Note: If you define a variable to reuse, add it to the global variables using the Variables button.
+              </p>
+            </div>
+          )}
+        </div>
       );
     } else if (typeof value === "number") {
       inputElement = (
