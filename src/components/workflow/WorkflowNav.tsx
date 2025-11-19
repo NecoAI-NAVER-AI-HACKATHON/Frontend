@@ -1,4 +1,4 @@
-import { ArrowLeft, Play, Save, Download, Trash2, ChevronRight } from "lucide-react";
+import { ArrowLeft, Play, Save, Trash2, ChevronRight, Variable } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 
@@ -8,8 +8,9 @@ interface WorkflowNavProps {
   systemId?: string;
   onRun?: () => void;
   onSave?: () => void;
-  onExport?: () => void;
   onDelete?: () => void;
+  onVariablesToggle?: () => void;
+  showVariables?: boolean;
 }
 
 const WorkflowNav = ({
@@ -18,8 +19,9 @@ const WorkflowNav = ({
   systemId,
   onRun,
   onSave,
-  onExport,
   onDelete,
+  onVariablesToggle,
+  showVariables,
 }: WorkflowNavProps) => {
   const navigate = useNavigate();
 
@@ -76,9 +78,17 @@ const WorkflowNav = ({
         )}
       </div>
 
-      {/* Right side - Action buttons and user info */}
+      {/* Right side - Action buttons */}
       <div className="flex items-center gap-3">
-        {/* Action buttons */}
+        <Button 
+          onClick={onVariablesToggle} 
+          variant={showVariables ? "default" : "outline"}
+          className={showVariables ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""}
+          title="Custom Variables"
+        >
+          <Variable className="w-4 h-4" />
+          Variables
+        </Button>
         <Button onClick={onRun} className="bg-indigo-600 hover:bg-indigo-700 text-white">
           <Play className="w-4 h-4" />
           Run
@@ -87,22 +97,10 @@ const WorkflowNav = ({
           <Save className="w-4 h-4" />
           Save
         </Button>
-        <Button onClick={onExport} variant="outline">
-          <Download className="w-4 h-4" />
-          Export
-        </Button>
         <Button onClick={onDelete} variant="destructive">
           <Trash2 className="w-4 h-4" />
           Delete
         </Button>
-
-        {/* User info */}
-        <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-200">
-          <span className="text-sm text-gray-600">user@gmail.com</span>
-          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium">
-            U
-          </div>
-        </div>
       </div>
     </div>
   );

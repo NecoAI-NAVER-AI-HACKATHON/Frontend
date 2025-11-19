@@ -5,15 +5,16 @@ import NodeBarSection from "../../components/workflow/NodeBarSection";
 import NodeConfigSection from "../../components/workflow/NodeConfigSection";
 import CanvasSection from "../../components/workflow/CanvasSection";
 import LogSection from "../../components/workflow/LogSection";
+import VariablesSidebar from "../../components/workflow/VariablesSidebar";
 import { WorkflowProvider, useWorkflow } from "../../contexts/WorkflowContext";
 import { useWorkflows } from "../../contexts/WorkflowsContext";
 import { useSystems } from "../../contexts/SystemsContext";
-import { SystemService } from "@/lib/services/systemService";
 import type {
   WorkflowNode,
   NodeDefinition,
   ExecutionLog,
   Workflow,
+  CustomVariable,
 } from "../../types/workflow";
 import {
   mockWorkflowId,
@@ -32,8 +33,8 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
   const navigate = useNavigate();
   const workflowId = systemId || id;
   const isMockWorkflow = workflowId === mockWorkflowId;
-  const { workflow, saveWorkflow } = useWorkflow();
-  const { deleteWorkflow: deleteWorkflowFromStorage } = useWorkflows();
+  const { workflow } = useWorkflow();
+  const { deleteWorkflow: deleteWorkflowFromStorage, saveWorkflow: saveToStorage } = useWorkflows();
   
   const workflowName = workflow?.name || (isMockWorkflow ? mockWorkflow.name : id || "New Workflow");
 
@@ -55,12 +56,16 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
     undefined
   );
   const [showConfig, setShowConfig] = useState(false);
+  const [showVariables, setShowVariables] = useState(false);
+  const [variables, setVariables] = useState<CustomVariable[]>(
+    workflow?.variables || []
+  );
 
   // Track the workflow ID we've initialized for
   const initializedWorkflowId = useRef<string | null>(null);
   const workflowNodesRef = useRef<WorkflowNode[]>([]);
 
-  // Load nodes from workflow only on initial load or when workflow ID changes
+  // Load nodes and variables from workflow only on initial load or when workflow ID changes
   useEffect(() => {
     const currentWorkflowId = workflow?.id || null;
     
@@ -82,12 +87,15 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
           workflowNodesRef.current = [];
           setSelectedNodeId(null);
         }
+        // Load variables from workflow
+        setVariables(workflow.variables || []);
         initializedWorkflowId.current = currentWorkflowId;
       } else if (isMockWorkflow && currentWorkflowId === mockWorkflowId) {
         // Fallback for mock workflow
         setNodes(mockWorkflowNodes);
         workflowNodesRef.current = mockWorkflowNodes;
         setLogs(mockExecutionLogs);
+        setVariables(mockWorkflow.variables || []);
         if (mockWorkflowNodes.length > 0) {
           setSelectedNodeId(mockWorkflowNodes[0].id);
           setSelectedNodeType(mockWorkflowNodes[0].type);
@@ -99,6 +107,7 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
         setNodes([]);
         workflowNodesRef.current = [];
         setLogs([]);
+        setVariables([]);
         setSelectedNodeId(null);
         setShowConfig(false);
         initializedWorkflowId.current = null;
@@ -107,6 +116,9 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
     // Only depend on workflow ID, not the whole workflow object or selectedNodeId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflow?.id, isMockWorkflow]);
+
+  // Update workflow when variables change (but don't auto-save)
+  // Variables are stored locally and saved when user clicks Save button
 
   // Handlers
   const handleNodeSelect = useCallback((nodeDef: NodeDefinition) => {
@@ -198,29 +210,26 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
     addLog(newLog);
   };
 
+  const handleVariablesChange = useCallback((newVariables: CustomVariable[]) => {
+    setVariables(newVariables);
+    // Variables will be saved when user clicks Save button
+  }, []);
+
   const handleSave = () => {
-    // Save workflow to localStorage
+    // Save workflow to localStorage with variables
     if (workflow && !isMockWorkflow) {
-      saveWorkflow();
+      // Update workflow with current variables before saving
+      const workflowToSave: Workflow = {
+        ...workflow,
+        variables,
+      };
+      // Save directly to WorkflowsContext with variables included
+      saveToStorage(workflowToSave);
       alert("Workflow saved successfully!");
     } else if (isMockWorkflow) {
       alert("Cannot save mock workflow. Please create a new workflow.");
     } else {
       alert("No workflow to save.");
-    }
-  };
-
-  const handleExport = () => {
-    // Export workflow as JSON
-    if (workflow) {
-      const dataStr = JSON.stringify(workflow, null, 2);
-      const dataBlob = new Blob([dataStr], { type: "application/json" });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${workflow.name || "workflow"}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
     }
   };
 
@@ -256,8 +265,9 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
           systemId={systemId}
           onRun={handleRun}
           onSave={handleSave}
-          onExport={handleExport}
           onDelete={handleDelete}
+          onVariablesToggle={() => setShowVariables(!showVariables)}
+          showVariables={showVariables}
         />
 
         {/* Main Content Area */}
@@ -288,10 +298,18 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
             <LogSection logs={logs} />
           </div>
 
-          {/* Right Sidebar - Node Configuration */}
-          {showConfig && selectedNode && (
+          {/* Right Sidebar - Node Configuration or Variables */}
+          {showVariables && (
+            <VariablesSidebar
+              variables={variables}
+              onVariablesChange={handleVariablesChange}
+              onClose={() => setShowVariables(false)}
+            />
+          )}
+          {showConfig && selectedNode && !showVariables && (
             <NodeConfigSection
               node={selectedNode}
+              nodes={nodes}
               onClose={() => {
                 setShowConfig(false);
                 setSelectedNodeId(null);

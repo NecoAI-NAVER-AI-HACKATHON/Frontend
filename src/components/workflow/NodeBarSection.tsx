@@ -28,6 +28,7 @@ const nodeDefinitions: NodeDefinition[] = [
     icon: "Globe",
   },
   { type: "clova-ocr", label: "CLOVA OCR", category: "ai", icon: "Globe" },
+  { type: "clova-studio", label: "Clova Studio", category: "ai", icon: "Globe" },
   { type: "papago", label: "Papago", category: "ai", icon: "Globe" },
   {
     type: "custom-model",
@@ -37,12 +38,12 @@ const nodeDefinitions: NodeDefinition[] = [
   },
   // Transform
   {
-    type: "json-parser",
-    label: "JSON Parser",
+    type: "function",
+    label: "Function",
     category: "transform",
     icon: "ArrowLeftRight",
   },
-  { type: "filter", label: "Filter", category: "transform", icon: "ArrowLeftRight" },
+  { type: "split", label: "Split", category: "transform", icon: "ArrowLeftRight" },
   { type: "merge", label: "Merge", category: "transform", icon: "ArrowLeftRight" },
   // Control
   { type: "if-else", label: "If/Else", category: "control", icon: "Repeat" },

@@ -7,7 +7,7 @@ const STORAGE_KEY = "workflows_storage";
 interface WorkflowsContextType {
   workflows: Workflow[];
   getWorkflow: (id: string) => Workflow | undefined;
-  createWorkflow: (workflow: Omit<Workflow, "id">) => string;
+  createWorkflow: (workflow: Omit<Workflow, "id"> & { id?: string }) => string;
   saveWorkflow: (workflow: Workflow) => void;
   deleteWorkflow: (id: string) => void;
   isLoading: boolean;

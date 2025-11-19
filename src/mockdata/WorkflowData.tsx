@@ -1,5 +1,5 @@
 // WorkflowData.tsx
-import type { Workflow, WorkflowNode, ExecutionLog } from "../types/workflow";
+import type { Workflow, WorkflowNode, ExecutionLog, CustomVariable } from "../types/workflow";
 
 export const mockWorkflowId = "sys-001"; // Matches the system ID in SystemsContext
 
@@ -26,7 +26,7 @@ export const mockWorkflowNodes: WorkflowNode[] = [
   },
   {
     id: "node-2",
-    type: "json-parser",
+    type: "function",
     name: "ExcelReader",
     position: { x: 300, y: 200 },
     config: {
@@ -44,14 +44,14 @@ export const mockWorkflowNodes: WorkflowNode[] = [
   },
   {
     id: "node-3",
-    type: "filter",
+    type: "split",
     name: "SplitInBatches",
     position: { x: 500, y: 200 },
     config: {
       name: "SplitInBatches",
       subtype: "split",
       parameters: {
-        batchSize: 1,
+        batchSize: 2,
       },
     },
     connections: {
@@ -111,8 +111,8 @@ export const mockWorkflowNodes: WorkflowNode[] = [
         field: "{{json.team}}",
         operator: "==",
         value: "Others",
-        trueNodeName: "End Node",
-        falseNodeName: "MergeData",
+        trueNodeName: "MergeData",
+        falseNodeName: "End Node",
       },
     },
     connections: {
@@ -146,13 +146,13 @@ export const mockWorkflowNodes: WorkflowNode[] = [
       parameters: {
         database: "",
         table: "",
-        fields: {
-          image: "",
-          problem: "",
-          team: "",
-          date: "",
-          client_email: "",
-        },
+        fields: [
+          { displayName: "Image", dbName: "image", type: "string" },
+          { displayName: "Problem", dbName: "problem", type: "text" },
+          { displayName: "Team", dbName: "team", type: "string" },
+          { displayName: "Date", dbName: "date", type: "date" },
+          { displayName: "Client Email", dbName: "client_email", type: "string" },
+        ],
       },
     },
     connections: {
@@ -197,6 +197,15 @@ export const mockWorkflowNodes: WorkflowNode[] = [
   },
 ];
 
+export const mockWorkflowVariables: CustomVariable[] = [
+  {
+    id: "var-1",
+    name: "teams_data",
+    value: "",
+    description: "Team responsibility data for product types",
+  },
+];
+
 export const mockWorkflow: Workflow = {
   id: mockWorkflowId,
   name: "Daily Feedback Batch Processor",
@@ -213,6 +222,7 @@ export const mockWorkflow: Workflow = {
     { from: "node-7", to: "node-9" },
     { from: "node-7", to: "node-10" },
   ],
+  variables: mockWorkflowVariables,
 };
 
 export const mockExecutionLogs: ExecutionLog[] = [
@@ -225,28 +235,28 @@ export const mockExecutionLogs: ExecutionLog[] = [
   {
     id: "log-2",
     timestamp: "14:32:15",
-    message: "Node 'Webhook Trigger' executed successfully",
+    message: "Node 'DailyTrigger' executed successfully",
     status: "success",
     nodeId: "node-1",
   },
   {
     id: "log-3",
     timestamp: "14:32:16",
-    message: "Node 'HyperCLOVA' processing...",
+    message: "Node 'Function' processing...",
     status: "processing",
     nodeId: "node-2",
   },
   {
     id: "log-4",
     timestamp: "14:32:20",
-    message: "Node 'HyperCLOVA' completed",
+    message: "Node 'Function' completed",
     status: "success",
     nodeId: "node-2",
   },
   {
     id: "log-5",
     timestamp: "14:32:21",
-    message: "Node 'JSON Parser' executed successfully",
+    message: "Node 'Split' executed successfully",
     status: "success",
     nodeId: "node-3",
   },

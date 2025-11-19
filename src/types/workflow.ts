@@ -8,11 +8,12 @@ export type NodeType =
   // AI Processing
   | "hyperclova"
   | "clova-ocr"
+  | "clova-studio"
   | "papago"
   | "custom-model"
   // Transform
-  | "json-parser"
-  | "filter"
+  | "function"
+  | "split"
   | "merge"
   // Control
   | "if-else"
@@ -44,6 +45,13 @@ export interface NodeDefinition {
   defaultConfig?: Record<string, any>;
 }
 
+export interface CustomVariable {
+  id: string;
+  name: string;
+  value: string;
+  description?: string;
+}
+
 export interface Workflow {
   id: string;
   name: string;
@@ -52,6 +60,7 @@ export interface Workflow {
     from: string;
     to: string;
   }>;
+  variables?: CustomVariable[];
 }
 
 export interface ExecutionLog {

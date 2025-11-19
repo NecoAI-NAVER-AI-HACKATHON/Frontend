@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { X, Plus, Trash2 } from "lucide-react";
 import type { WorkflowNode } from "../../types/workflow";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -7,6 +7,7 @@ import { Select } from "../ui/select";
 
 interface NodeConfigSectionProps {
   node: WorkflowNode | null;
+  nodes?: WorkflowNode[];
   onClose: () => void;
   onConfigChange: (nodeId: string, config: Record<string, any>) => void;
 }
@@ -48,12 +49,34 @@ const HTTP_METHODS = [
   { value: "PATCH", label: "PATCH" },
 ];
 
+const DATABASE_FIELD_TYPES = [
+  { value: "string", label: "String" },
+  { value: "integer", label: "Integer" },
+  { value: "float", label: "Float" },
+  { value: "boolean", label: "Boolean" },
+  { value: "date", label: "Date" },
+  { value: "datetime", label: "DateTime" },
+  { value: "text", label: "Text" },
+  { value: "json", label: "JSON" },
+];
+
 const NodeConfigSection = ({
   node,
+  nodes = [],
   onClose,
   onConfigChange,
 }: NodeConfigSectionProps) => {
   if (!node) return null;
+
+  // Get all node names for select dropdowns (excluding the current node)
+  const availableNodeNames = nodes
+    .filter((n) => n.id !== node.id)
+    .map((n) => ({ value: n.name, label: n.name }));
+  
+  // Add "End Node" as an option for if-else nodes (it's a special value, not an actual node)
+  const nodeNameOptions = node.type === "if-else" 
+    ? [...availableNodeNames, { value: "End Node", label: "End Node" }]
+    : availableNodeNames;
 
   const handleConfigChange = (key: string, value: any) => {
     onConfigChange(node.id, {
@@ -96,6 +119,119 @@ const NodeConfigSection = ({
   ): React.ReactElement | null => {
     const fullPath = [...path, key];
     const fieldKey = fullPath.join(".");
+
+    // Special handling for database fields
+    if (key === "fields" && node.type === "database" && path[0] === "parameters") {
+      const fieldsArray = Array.isArray(value) 
+        ? value 
+        : (value && typeof value === "object" 
+            ? Object.entries(value).map(([dbName, val]) => ({
+                displayName: typeof val === "string" && val ? val : dbName,
+                dbName: dbName,
+                type: "string",
+              }))
+            : []);
+
+      const handleAddField = () => {
+        const newFields = [...fieldsArray, { displayName: "", dbName: "", type: "string" }];
+        handleNestedConfigChange(fullPath, newFields);
+      };
+
+      const handleRemoveField = (index: number) => {
+        const newFields = fieldsArray.filter((_, i) => i !== index);
+        handleNestedConfigChange(fullPath, newFields);
+      };
+
+      const handleFieldChange = (index: number, fieldKey: string, fieldValue: string) => {
+        const newFields = [...fieldsArray];
+        newFields[index] = { ...newFields[index], [fieldKey]: fieldValue };
+        handleNestedConfigChange(fullPath, newFields);
+      };
+
+      return (
+        <div key={fieldKey} className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-gray-700 capitalize">
+              {key.replace(/([A-Z])/g, " $1").trim()}
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddField}
+              className="h-7 px-2 text-xs"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Field
+            </Button>
+          </div>
+          
+          <div className="space-y-2">
+            {fieldsArray.map((field: any, index: number) => (
+              <div
+                key={index}
+                className="p-3 border border-gray-200 rounded-md space-y-2 bg-gray-50"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Display Name
+                      </label>
+                      <Input
+                        type="text"
+                        value={field.displayName || ""}
+                        onChange={(e) => handleFieldChange(index, "displayName", e.target.value)}
+                        placeholder="Display name"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Database Name
+                      </label>
+                      <Input
+                        type="text"
+                        value={field.dbName || ""}
+                        onChange={(e) => handleFieldChange(index, "dbName", e.target.value)}
+                        placeholder="name_in_database"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Type
+                      </label>
+                      <Select
+                        options={DATABASE_FIELD_TYPES}
+                        value={field.type || "string"}
+                        onChange={(e) => handleFieldChange(index, "type", e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveField(index)}
+                    className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            
+            {fieldsArray.length === 0 && (
+              <div className="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded-md">
+                No fields added. Click "Add Field" to add one.
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     // Handle nested objects
     if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -166,6 +302,14 @@ const NodeConfigSection = ({
         <Select
           options={HTTP_METHODS}
           value={value || "POST"}
+          onChange={(e) => handleNestedConfigChange(fullPath, e.target.value)}
+        />
+      );
+    } else if (key === "trueNodeName" || key === "falseNodeName") {
+      inputElement = (
+        <Select
+          options={nodeNameOptions}
+          value={value || ""}
           onChange={(e) => handleNestedConfigChange(fullPath, e.target.value)}
         />
       );
