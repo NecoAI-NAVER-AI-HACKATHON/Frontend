@@ -34,7 +34,7 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
   const workflowId = systemId || id;
   const isMockWorkflow = workflowId === mockWorkflowId;
   const { workflow } = useWorkflow();
-  const { deleteWorkflow: deleteWorkflowFromStorage, saveWorkflow: saveToStorage } = useWorkflows();
+  const { deleteWorkflow: deleteWorkflowFromStorage, saveWorkflow: saveToStorage, revertMockWorkflow } = useWorkflows();
   
   const workflowName = workflow?.name || (isMockWorkflow ? mockWorkflow.name : id || "New Workflow");
 
@@ -91,14 +91,21 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
         setVariables(workflow.variables || []);
         initializedWorkflowId.current = currentWorkflowId;
       } else if (isMockWorkflow && currentWorkflowId === mockWorkflowId) {
-        // Fallback for mock workflow
-        setNodes(mockWorkflowNodes);
-        workflowNodesRef.current = mockWorkflowNodes;
+        // For mock workflow, check if there's a saved version first
+        // The workflow object will already have the saved version if it exists
+        const workflowToUse = workflow || mockWorkflow;
+        const nodesToUse = workflowToUse.nodes && workflowToUse.nodes.length > 0 
+          ? workflowToUse.nodes 
+          : mockWorkflowNodes;
+        const variablesToUse = workflowToUse.variables || mockWorkflow.variables || [];
+        
+        setNodes(nodesToUse);
+        workflowNodesRef.current = nodesToUse;
         setLogs(mockExecutionLogs);
-        setVariables(mockWorkflow.variables || []);
-        if (mockWorkflowNodes.length > 0) {
-          setSelectedNodeId(mockWorkflowNodes[0].id);
-          setSelectedNodeType(mockWorkflowNodes[0].type);
+        setVariables(variablesToUse);
+        if (nodesToUse.length > 0) {
+          setSelectedNodeId(nodesToUse[0].id);
+          setSelectedNodeType(nodesToUse[0].type);
           setShowConfig(true);
         }
         initializedWorkflowId.current = mockWorkflowId;
@@ -217,19 +224,28 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
 
   const handleSave = () => {
     // Save workflow to localStorage with variables
-    if (workflow && !isMockWorkflow) {
+    if (workflow) {
       // Update workflow with current variables before saving
       const workflowToSave: Workflow = {
         ...workflow,
         variables,
       };
       // Save directly to WorkflowsContext with variables included
+      // Mock workflow can now be saved to localStorage, but original remains in code
       saveToStorage(workflowToSave);
       alert("Workflow saved successfully!");
-    } else if (isMockWorkflow) {
-      alert("Cannot save mock workflow. Please create a new workflow.");
     } else {
       alert("No workflow to save.");
+    }
+  };
+
+  const handleRevert = () => {
+    if (isMockWorkflow) {
+      if (confirm("Are you sure you want to revert the mock workflow to its original state? This will discard all changes saved in localStorage.")) {
+        revertMockWorkflow();
+        // Reload the page to refresh the workflow
+        window.location.reload();
+      }
     }
   };
 
@@ -268,6 +284,8 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
           onDelete={handleDelete}
           onVariablesToggle={() => setShowVariables(!showVariables)}
           showVariables={showVariables}
+          onRevert={handleRevert}
+          isMockWorkflow={isMockWorkflow}
         />
 
         {/* Main Content Area */}
@@ -343,8 +361,9 @@ const Workflow = () => {
       
       try {
         if (isMockWorkflow) {
-          // Load mock workflow (sys-001)
-          setInitialWorkflow(mockWorkflow);
+          // Load mock workflow (sys-001) - check if saved version exists first
+          const savedMockWorkflow = getWorkflow(mockWorkflowId);
+          setInitialWorkflow(savedMockWorkflow || mockWorkflow);
         } else if (systemId && workspaceId) {
           // Load from system - get system data and create/load workflow
           const system = getSystem(systemId);

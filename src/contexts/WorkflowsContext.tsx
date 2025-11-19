@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { Workflow } from "../types/workflow";
-import { mockWorkflow } from "../mockdata/WorkflowData";
+import { mockWorkflow, mockWorkflowId } from "../mockdata/WorkflowData";
 
 const STORAGE_KEY = "workflows_storage";
 
@@ -10,6 +10,7 @@ interface WorkflowsContextType {
   createWorkflow: (workflow: Omit<Workflow, "id"> & { id?: string }) => string;
   saveWorkflow: (workflow: Workflow) => void;
   deleteWorkflow: (id: string) => void;
+  revertMockWorkflow: () => void;
   isLoading: boolean;
 }
 
@@ -37,7 +38,15 @@ export const WorkflowsProvider = ({ children }: WorkflowsProviderProps) => {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        setWorkflows(Array.isArray(parsed) ? parsed : []);
+        const workflows = Array.isArray(parsed) ? parsed : [];
+        
+        // Check if mock workflow exists in storage, otherwise add original mock data
+        const hasMockWorkflow = workflows.some((w) => w.id === mockWorkflow.id);
+        if (!hasMockWorkflow) {
+          workflows.push(mockWorkflow);
+        }
+        
+        setWorkflows(workflows);
       } else {
         // Initialize with mock workflow data if no data exists
         // The mock workflow is linked to sys-001 system in ws-001 workspace
@@ -112,12 +121,23 @@ export const WorkflowsProvider = ({ children }: WorkflowsProviderProps) => {
     });
   }, []);
 
+  const revertMockWorkflow = useCallback(() => {
+    setWorkflows((prev) => {
+      // Replace mock workflow with original mock data
+      const updated = prev.filter((w) => w.id !== mockWorkflowId);
+      updated.push(mockWorkflow);
+      console.log("Mock workflow reverted to original data");
+      return updated;
+    });
+  }, []);
+
   const value: WorkflowsContextType = {
     workflows,
     getWorkflow,
     createWorkflow,
     saveWorkflow,
     deleteWorkflow,
+    revertMockWorkflow,
     isLoading,
   };
 

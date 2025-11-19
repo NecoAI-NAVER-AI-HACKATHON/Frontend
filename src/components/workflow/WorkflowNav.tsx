@@ -1,4 +1,4 @@
-import { ArrowLeft, Play, Save, Trash2, ChevronRight, Variable } from "lucide-react";
+import { ArrowLeft, Play, Save, Trash2, ChevronRight, Variable, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 
@@ -11,6 +11,8 @@ interface WorkflowNavProps {
   onDelete?: () => void;
   onVariablesToggle?: () => void;
   showVariables?: boolean;
+  onRevert?: () => void;
+  isMockWorkflow?: boolean;
 }
 
 const WorkflowNav = ({
@@ -22,6 +24,8 @@ const WorkflowNav = ({
   onDelete,
   onVariablesToggle,
   showVariables,
+  onRevert,
+  isMockWorkflow,
 }: WorkflowNavProps) => {
   const navigate = useNavigate();
 
@@ -97,6 +101,12 @@ const WorkflowNav = ({
           <Save className="w-4 h-4" />
           Save
         </Button>
+        {isMockWorkflow && onRevert && (
+          <Button onClick={onRevert} variant="outline" title="Revert to original mock data">
+            <RotateCcw className="w-4 h-4" />
+            Revert
+          </Button>
+        )}
         <Button onClick={onDelete} variant="destructive">
           <Trash2 className="w-4 h-4" />
           Delete
