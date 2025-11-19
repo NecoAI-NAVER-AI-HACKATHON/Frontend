@@ -15,6 +15,7 @@ interface WorkflowContextType {
   addLog: (log: ExecutionLog) => void;
   saveWorkflow: () => void;
   updateWorkflowName: (name: string) => void;
+  updateWorkflowVariables: (variables: any[] | undefined) => void;
 }
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
@@ -57,6 +58,8 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
           }
           return acc;
         }, [] as Array<{ from: string; to: string }>),
+        // Preserve variables when updating workflow
+        variables: workflow.variables,
       };
       // Only update workflow state if nodes actually changed (prevent unnecessary updates)
       const nodesChanged = JSON.stringify(workflow.nodes) !== JSON.stringify(nodes);
@@ -71,7 +74,7 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
     }
-  }, [nodes, workflow?.id, workflow?.name]);
+  }, [nodes, workflow?.id, workflow?.name, workflow?.variables]);
 
   const updateNode = useCallback((nodeId: string, updates: Partial<WorkflowNode>) => {
     setNodes((prev) =>
@@ -121,6 +124,8 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
           }
           return acc;
         }, [] as Array<{ from: string; to: string }>),
+        // Preserve variables when saving
+        variables: workflow.variables,
       };
       
       // Update local workflow state
@@ -149,6 +154,17 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
     }
   }, [workflow]);
 
+  const updateWorkflowVariables = useCallback((variables: any[] | undefined) => {
+    if (workflow) {
+      const updatedWorkflow: Workflow = {
+        ...workflow,
+        variables: variables || [],
+      };
+      setWorkflow(updatedWorkflow);
+      // Don't auto-save variable changes - only update local state
+    }
+  }, [workflow]);
+
   const value: WorkflowContextType = {
     workflow,
     nodes,
@@ -163,6 +179,7 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
     addLog,
     saveWorkflow,
     updateWorkflowName,
+    updateWorkflowVariables,
   };
 
   return <WorkflowContext.Provider value={value}>{children}</WorkflowContext.Provider>;

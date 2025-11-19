@@ -113,7 +113,7 @@ const VariablesSidebar = ({
               placeholder="Variable value"
               className="h-8 text-sm"
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" && !e.shiftKey) {
                   handleAddVariable();
                 }
               }}
@@ -190,9 +190,11 @@ const VariablesSidebar = ({
                             {variable.description}
                           </p>
                         )}
-                        <p className="text-xs text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded">
-                          {variable.value || "(empty)"}
-                        </p>
+                        <div className="max-w-full overflow-hidden">
+                          <p className="text-xs text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded break-words whitespace-pre-wrap">
+                            {variable.value || "(empty)"}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1">
                         <Button
@@ -264,12 +266,22 @@ const EditVariableForm = ({
         <label className="block text-xs font-medium text-gray-600 mb-1">
           Value
         </label>
-        <Input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className="h-8 text-sm"
-        />
+        {variable.name === "teams_data" || (value && (value.trim().startsWith("[") || value.trim().startsWith("{"))) ? (
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="w-full min-h-[120px] max-h-[300px] rounded-md border border-input bg-transparent px-3 py-2 text-xs font-mono shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+            placeholder="Enter JSON value"
+            style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
+          />
+        ) : (
+          <Input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="h-8 text-sm"
+          />
+        )}
       </div>
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">

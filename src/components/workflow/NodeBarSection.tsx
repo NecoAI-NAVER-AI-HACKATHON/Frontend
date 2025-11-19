@@ -17,24 +17,153 @@ interface NodeBarSectionProps {
 // Node definitions
 const nodeDefinitions: NodeDefinition[] = [
   // Trigger
-  { type: "webhook", label: "Webhook", category: "trigger", icon: "Zap" },
-  { type: "schedule", label: "Schedule", category: "trigger", icon: "Zap" },
-  { type: "manual", label: "Manual", category: "trigger", icon: "Zap" },
+  { 
+    type: "webhook", 
+    label: "Webhook", 
+    category: "trigger", 
+    icon: "Zap",
+    defaultConfig: {
+      name: "Webhook",
+      type: "trigger",
+      subtype: "webhook",
+      parameters: {},
+    },
+  },
+  { 
+    type: "schedule", 
+    label: "Schedule", 
+    category: "trigger", 
+    icon: "Zap",
+    defaultConfig: {
+      name: "Schedule",
+      type: "trigger",
+      subtype: "schedule",
+      parameters: {
+        mode: {
+          mode: "daily",
+          dailyTime: "12:00:00",
+        },
+        timezone: "Asia/Ho_Chi_Minh",
+      },
+    },
+  },
+  { 
+    type: "manual", 
+    label: "Manual", 
+    category: "trigger", 
+    icon: "Zap",
+    defaultConfig: {
+      name: "Manual",
+      type: "trigger",
+      subtype: "manual",
+      parameters: {},
+    },
+  },
   // AI Processing
   {
     type: "hyperclova",
     label: "HyperCLOVA",
     category: "ai",
     icon: "Globe",
+    defaultConfig: {
+      name: "HyperCLOVA",
+      type: "ai-processing",
+      subtype: "image-analyze",
+      parameters: {
+        system: "You are an image analysis assistant.",
+        prompt: "",
+        attachment: "",
+        url: "https://clovastudio.stream.ntruss.com/v3/chat-completions/HCX-005",
+        method: "POST",
+        credentials: {
+          API_KEY: "",
+        },
+      },
+      inputSchema: {
+        type: "object",
+        properties: {},
+      },
+      outputSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
   },
-  { type: "clova-ocr", label: "CLOVA OCR", category: "ai", icon: "Globe" },
-  { type: "clova-studio", label: "Clova Studio", category: "ai", icon: "Globe" },
-  { type: "papago", label: "Papago", category: "ai", icon: "Globe" },
+  {
+    type: "clova-ocr",
+    label: "CLOVA OCR",
+    category: "ai",
+    icon: "Globe",
+    defaultConfig: {
+      name: "CLOVA OCR",
+      type: "ai-processing",
+      parameters: {},
+      inputSchema: {
+        type: "object",
+        properties: {},
+      },
+      outputSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "clova-studio",
+    label: "Clova Studio",
+    category: "ai",
+    icon: "Globe",
+    defaultConfig: {
+      name: "Clova Studio",
+      type: "ai-processing",
+      parameters: {},
+      inputSchema: {
+        type: "object",
+        properties: {},
+      },
+      outputSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "papago",
+    label: "Papago",
+    category: "ai",
+    icon: "Globe",
+    defaultConfig: {
+      name: "Papago",
+      type: "ai-processing",
+      parameters: {},
+      inputSchema: {
+        type: "object",
+        properties: {},
+      },
+      outputSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
   {
     type: "custom-model",
     label: "Custom Model",
     category: "ai",
     icon: "Globe",
+    defaultConfig: {
+      name: "Custom Model",
+      type: "ai-processing",
+      parameters: {},
+      inputSchema: {
+        type: "object",
+        properties: {},
+      },
+      outputSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
   },
   // Transform
   {
@@ -42,22 +171,141 @@ const nodeDefinitions: NodeDefinition[] = [
     label: "Function",
     category: "transform",
     icon: "ArrowLeftRight",
+    defaultConfig: {
+      name: "Function",
+      type: "data-transform",
+      subtype: "excel-read",
+      parameters: {
+        filePath: "",
+      },
+      outputSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
   },
-  { type: "split", label: "Split", category: "transform", icon: "ArrowLeftRight" },
-  { type: "merge", label: "Merge", category: "transform", icon: "ArrowLeftRight" },
+  { 
+    type: "split", 
+    label: "Split", 
+    category: "transform", 
+    icon: "ArrowLeftRight",
+    defaultConfig: {
+      name: "Split",
+      type: "data-transform",
+      subtype: "split",
+      parameters: {
+        batchSize: 1,
+      },
+    },
+  },
+  { 
+    type: "merge", 
+    label: "Merge", 
+    category: "transform", 
+    icon: "ArrowLeftRight",
+    defaultConfig: {
+      name: "Merge",
+      type: "data-transform",
+      subtype: "merge",
+      parameters: {},
+    },
+  },
   // Control
-  { type: "if-else", label: "If/Else", category: "control", icon: "Repeat" },
-  { type: "loop", label: "Loop", category: "control", icon: "Repeat" },
-  { type: "switch", label: "Switch", category: "control", icon: "Repeat" },
+  { 
+    type: "if-else", 
+    label: "If/Else", 
+    category: "control", 
+    icon: "Repeat",
+    defaultConfig: {
+      name: "If/Else",
+      type: "control",
+      subtype: "if",
+      parameters: {
+        field: "",
+        operator: "==",
+        value: "",
+        trueNodeName: "",
+        falseNodeName: "",
+      },
+    },
+  },
+  { 
+    type: "loop", 
+    label: "Loop", 
+    category: "control", 
+    icon: "Repeat",
+    defaultConfig: {
+      name: "Loop",
+      type: "control",
+      subtype: "loop",
+      parameters: {},
+    },
+  },
+  { 
+    type: "switch", 
+    label: "Switch", 
+    category: "control", 
+    icon: "Repeat",
+    defaultConfig: {
+      name: "Switch",
+      type: "control",
+      subtype: "switch",
+      parameters: {},
+    },
+  },
   // Output
   {
     type: "http-request",
     label: "HTTP Request",
     category: "output",
     icon: "FileText",
+    defaultConfig: {
+      name: "HTTP Request",
+      type: "output",
+      subtype: "http-request",
+      parameters: {
+        url: "",
+        method: "POST",
+        headers: {},
+        body: "",
+      },
+    },
   },
-  { type: "database", label: "Database", category: "output", icon: "FileText" },
-  { type: "email", label: "Email", category: "output", icon: "FileText" },
+  { 
+    type: "database", 
+    label: "Database", 
+    category: "output", 
+    icon: "FileText",
+    defaultConfig: {
+      name: "Database",
+      type: "output",
+      subtype: "database",
+      parameters: {
+        connection: "",
+        table: "",
+        fields: [],
+      },
+    },
+  },
+  { 
+    type: "email", 
+    label: "Email", 
+    category: "output", 
+    icon: "FileText",
+    defaultConfig: {
+      name: "Email",
+      type: "output",
+      subtype: "mail-writer",
+      parameters: {
+        to: "",
+        subject: "",
+        body: {
+          type: "string",
+          content: "",
+        },
+      },
+    },
+  },
 ];
 
 const iconMap: Record<string, LucideIcon> = {

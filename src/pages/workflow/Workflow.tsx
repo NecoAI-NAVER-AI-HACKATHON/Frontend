@@ -50,6 +50,7 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
     addNode,
     deleteNode,
     addLog,
+    updateWorkflowVariables,
   } = useWorkflow();
 
   const [selectedNodeType, setSelectedNodeType] = useState<string | undefined>(
@@ -124,24 +125,42 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflow?.id, isMockWorkflow]);
 
-  // Update workflow when variables change (but don't auto-save)
-  // Variables are stored locally and saved when user clicks Save button
+  // Sync variables to workflow object when they change (but don't auto-save)
+  // This ensures variables are preserved when workflow updates
+  useEffect(() => {
+    if (workflow && updateWorkflowVariables) {
+      // Update workflow object in context to preserve variables
+      // This prevents variables from being lost when nodes change
+      const variablesChanged = JSON.stringify(workflow.variables || []) !== JSON.stringify(variables);
+      if (variablesChanged) {
+        // Update the workflow object with current variables
+        updateWorkflowVariables(variables);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variables, updateWorkflowVariables]);
 
   // Handlers
   const handleNodeSelect = useCallback((nodeDef: NodeDefinition) => {
     setSelectedNodeType(nodeDef.type);
     // Add new node to canvas with better positioning
-    const newNode: WorkflowNode = {
-      id: `node-${Date.now()}`,
-      type: nodeDef.type,
-      name: nodeDef.label,
-      position: {
-        // Place new nodes in a grid-like pattern
-        x: 300 + (nodes.length % 3) * 250,
-        y: 150 + Math.floor(nodes.length / 3) * 150,
-      },
-      config: nodeDef.defaultConfig || { name: nodeDef.label },
-    };
+      const defaultConfig = nodeDef.defaultConfig || { name: nodeDef.label };
+      // Ensure parameters object always exists
+      if (!defaultConfig.parameters) {
+        defaultConfig.parameters = {};
+      }
+
+      const newNode: WorkflowNode = {
+        id: `node-${Date.now()}`,
+        type: nodeDef.type,
+        name: nodeDef.label,
+        position: {
+          // Place new nodes in a grid-like pattern
+          x: 300 + (nodes.length % 3) * 250,
+          y: 150 + Math.floor(nodes.length / 3) * 150,
+        },
+        config: defaultConfig,
+      };
     addNode(newNode);
     setSelectedNodeId(newNode.id);
     setShowConfig(true);
@@ -202,6 +221,37 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
   );
 
   const handleRun = () => {
+    // Convert workflow to backend JSON format
+    const workflowJson = {
+      id: workflow?.id || mockWorkflowId,
+      name: workflow?.name || "Daily Feedback Batch Processor",
+      nodes: nodes.map((node) => {
+        const nodeJson: any = {
+          name: node.config?.name || node.name,
+          type: node.config?.type || node.type,
+          subtype: node.config?.subtype || node.type,
+          position: [node.position.x, node.position.y],
+          parameters: node.config?.parameters || {},
+        };
+        
+        // Add inputSchema if it exists
+        if (node.config?.inputSchema) {
+          nodeJson.inputSchema = node.config.inputSchema;
+        }
+        
+        // Add outputSchema if it exists
+        if (node.config?.outputSchema) {
+          nodeJson.outputSchema = node.config.outputSchema;
+        }
+        
+        return nodeJson;
+      }),
+      connections: buildConnectionsArray(nodes),
+    };
+    
+    // Console log the JSON that would be sent to backend
+    console.log("Workflow JSON to send to backend:", JSON.stringify(workflowJson, null, 2));
+    
     // Simulate workflow execution
     const newLog: ExecutionLog = {
       id: `log-${Date.now()}`,
@@ -215,6 +265,68 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
       status: "success",
     };
     addLog(newLog);
+  };
+
+  // Helper function to build connections array in the format: [{ main: [[{sourceNode, targetNode, inputIndex}]] }]
+  const buildConnectionsArray = (workflowNodes: WorkflowNode[]) => {
+    const connections: any[] = [];
+    const nodeNameMap = new Map<string, string>(); // Map node ID to node name
+    
+    // Build node name map
+    workflowNodes.forEach((node) => {
+      nodeNameMap.set(node.id, node.config?.name || node.name);
+    });
+    
+    // Group connections by source node
+    const connectionsBySource = new Map<string, Array<{ sourceNode: string; targetNode: string; inputIndex: number }>>();
+    
+    workflowNodes.forEach((node) => {
+      if (node.connections?.output) {
+        node.connections.output.forEach((targetId) => {
+          const sourceName = nodeNameMap.get(node.id) || node.id;
+          const targetName = nodeNameMap.get(targetId) || targetId;
+          
+          if (!connectionsBySource.has(sourceName)) {
+            connectionsBySource.set(sourceName, []);
+          }
+          
+          connectionsBySource.get(sourceName)!.push({
+            sourceNode: sourceName,
+            targetNode: targetName,
+            inputIndex: 0, // Default to 0, can be enhanced later
+          });
+        });
+      }
+    });
+    
+    // Build connections array structure
+    connectionsBySource.forEach((conns) => {
+      // Check if any target is "End Node" (special case for if-else)
+      const mainConnections: any[] = [];
+      const subConnections: any[] = [];
+      
+      conns.forEach((conn) => {
+        if (conn.targetNode === "End Node") {
+          subConnections.push(conn);
+        } else {
+          mainConnections.push(conn);
+        }
+      });
+      
+      const connectionGroup: any = {};
+      if (mainConnections.length > 0) {
+        connectionGroup.main = [mainConnections];
+      }
+      if (subConnections.length > 0) {
+        connectionGroup.sub = [subConnections];
+      }
+      
+      if (Object.keys(connectionGroup).length > 0) {
+        connections.push(connectionGroup);
+      }
+    });
+    
+    return connections;
   };
 
   const handleVariablesChange = useCallback((newVariables: CustomVariable[]) => {
@@ -333,6 +445,8 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
                 setSelectedNodeId(null);
               }}
               onConfigChange={handleConfigChange}
+              variables={variables}
+              onVariablesChange={handleVariablesChange}
             />
           )}
         </div>

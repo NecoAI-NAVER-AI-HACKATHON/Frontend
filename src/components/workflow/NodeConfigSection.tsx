@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { X, Plus, Trash2, Info } from "lucide-react";
-import type { WorkflowNode } from "../../types/workflow";
+import type { WorkflowNode, CustomVariable } from "../../types/workflow";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
@@ -10,6 +10,8 @@ interface NodeConfigSectionProps {
   nodes?: WorkflowNode[];
   onClose: () => void;
   onConfigChange: (nodeId: string, config: Record<string, any>) => void;
+  variables?: CustomVariable[];
+  onVariablesChange?: (variables: CustomVariable[]) => void;
 }
 
 const TIMEZONES = [
@@ -60,13 +62,80 @@ const DATABASE_FIELD_TYPES = [
   { value: "json", label: "JSON" },
 ];
 
+const SCHEMA_PROPERTY_TYPES = [
+  { value: "string", label: "String" },
+  { value: "number", label: "Number" },
+  { value: "integer", label: "Integer" },
+  { value: "boolean", label: "Boolean" },
+  { value: "array", label: "Array" },
+  { value: "object", label: "Object" },
+];
+
 const NodeConfigSection = ({
   node,
   nodes = [],
   onClose,
   onConfigChange,
+  variables = [],
+  onVariablesChange,
 }: NodeConfigSectionProps) => {
   if (!node) return null;
+
+  // Check if node should show schemas (AI nodes or Excel reader)
+  const shouldShowSchemas = () => {
+    const aiNodeTypes = ["hyperclova", "clova-ocr", "clova-studio", "papago", "custom-model"];
+    const isAINode = aiNodeTypes.includes(node.type);
+    const isExcelReader = node.type === "function" && node.config?.subtype === "excel-read";
+    return isAINode || isExcelReader;
+  };
+
+  // Ensure parameters object exists
+  useEffect(() => {
+    if (node && (!node.config || !node.config.parameters)) {
+      const currentConfig = node.config || {};
+      onConfigChange(node.id, {
+        ...currentConfig,
+        parameters: currentConfig.parameters || {},
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node.id]); // Only run when node changes
+
+  // Sync existing outputSchema properties with global variables on mount
+  useEffect(() => {
+    if (node.config?.outputSchema && onVariablesChange && shouldShowSchemas()) {
+      const outputSchema = node.config.outputSchema;
+      let properties: Record<string, any> = {};
+      
+      if (outputSchema?.properties) {
+        properties = outputSchema.properties;
+      } else if (outputSchema?.items?.properties) {
+        properties = outputSchema.items.properties;
+      }
+
+      const propertyNames = Object.keys(properties);
+      const newVariables: CustomVariable[] = [];
+      
+      propertyNames.forEach((propName) => {
+        const variableName = `json.${propName}`;
+        const variableExists = variables.some((v) => v.name === variableName);
+        
+        if (!variableExists) {
+          newVariables.push({
+            id: `var-${Date.now()}-${propName}`,
+            name: variableName,
+            value: "",
+            description: `Auto-generated from ${node.name} output schema`,
+          });
+        }
+      });
+
+      if (newVariables.length > 0) {
+        onVariablesChange([...variables, ...newVariables]);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node.id]); // Only run when node changes
 
   // Get all node names for select dropdowns (excluding the current node)
   const availableNodeNames = nodes
@@ -119,6 +188,11 @@ const NodeConfigSection = ({
   ): React.ReactElement | null => {
     const fullPath = [...path, key];
     const fieldKey = fullPath.join(".");
+
+    // Skip teams_data if it's inside injected-data (it's defined in global variables)
+    if (key === "teams_data" && path.includes("injected-data")) {
+      return null;
+    }
 
     // Special handling for database fields
     if (key === "fields" && node.type === "database" && path[0] === "parameters") {
@@ -235,12 +309,26 @@ const NodeConfigSection = ({
 
     // Handle nested objects
     if (value && typeof value === "object" && !Array.isArray(value)) {
+      // Filter out teams_data from injected-data since it's defined in global variables
+      const filteredEntries = Object.entries(value).filter(([subKey, _]) => {
+        // Skip teams_data if it's inside injected-data
+        if (key === "injected-data" && subKey === "teams_data") {
+          return false;
+        }
+        return true;
+      });
+
+      // Don't render injected-data section if it's empty after filtering
+      if (key === "injected-data" && filteredEntries.length === 0) {
+        return null;
+      }
+
       return (
         <div key={fieldKey} className="space-y-3 border-l-2 border-gray-200 pl-4">
           <div className="text-sm font-medium text-gray-700 capitalize">
             {key.replace(/([A-Z])/g, " $1").trim()}
           </div>
-          {Object.entries(value).map(([subKey, subValue]) =>
+          {filteredEntries.map(([subKey, subValue]) =>
             renderParameterField(subKey, subValue, fullPath)
           )}
         </div>
@@ -364,6 +452,237 @@ const NodeConfigSection = ({
     );
   };
 
+  // Render schema properties (inputSchema or outputSchema)
+  const renderSchemaProperties = (
+    schemaType: "inputSchema" | "outputSchema",
+    schema: any
+  ) => {
+    // Extract properties from schema
+    let properties: Record<string, any> = {};
+    
+    if (schema?.properties) {
+      properties = schema.properties;
+    } else if (schema?.items?.properties) {
+      // Handle array items schema
+      properties = schema.items.properties;
+    }
+
+    const propertiesArray = Object.entries(properties).map(([name, prop]: [string, any]) => ({
+      name,
+      type: prop.type || "string",
+    }));
+
+    const handleAddProperty = () => {
+      const newPropertyName = `property_${Date.now()}`;
+      const newProperties = {
+        ...properties,
+        [newPropertyName]: { type: "string" },
+      };
+
+      let updatedSchema: any;
+      if (schema?.items) {
+        // Array schema
+        updatedSchema = {
+          ...schema,
+          items: {
+            ...schema.items,
+            properties: newProperties,
+          },
+        };
+      } else {
+        // Object schema
+        updatedSchema = {
+          ...schema,
+          properties: newProperties,
+        };
+      }
+
+      handleConfigChange(schemaType, updatedSchema);
+
+      // Auto-add to global variables as json.propertyName (only for outputSchema)
+      if (schemaType === "outputSchema" && onVariablesChange) {
+        const variableName = `json.${newPropertyName}`;
+        const variableExists = variables.some((v) => v.name === variableName);
+        
+        if (!variableExists) {
+          const newVariable: CustomVariable = {
+            id: `var-${Date.now()}`,
+            name: variableName,
+            value: "",
+            description: `Auto-generated from ${node.name} output schema`,
+          };
+          onVariablesChange([...variables, newVariable]);
+        }
+      }
+    };
+
+    const handleRemoveProperty = (propertyName: string) => {
+      const newProperties = { ...properties };
+      delete newProperties[propertyName];
+
+      let updatedSchema: any;
+      if (schema?.items) {
+        updatedSchema = {
+          ...schema,
+          items: {
+            ...schema.items,
+            properties: newProperties,
+          },
+        };
+      } else {
+        updatedSchema = {
+          ...schema,
+          properties: newProperties,
+        };
+      }
+
+      handleConfigChange(schemaType, updatedSchema);
+
+      // Remove from global variables if it exists (only for outputSchema)
+      if (schemaType === "outputSchema" && onVariablesChange) {
+        const variableName = `json.${propertyName}`;
+        const updatedVariables = variables.filter((v) => v.name !== variableName);
+        if (updatedVariables.length !== variables.length) {
+          onVariablesChange(updatedVariables);
+        }
+      }
+    };
+
+    const handlePropertyChange = (oldName: string, newName: string, newType: string) => {
+      const newProperties: Record<string, any> = {};
+      
+      Object.entries(properties).forEach(([name, prop]: [string, any]) => {
+        if (name === oldName) {
+          newProperties[newName] = { type: newType };
+        } else {
+          newProperties[name] = prop;
+        }
+      });
+
+      let updatedSchema: any;
+      if (schema?.items) {
+        updatedSchema = {
+          ...schema,
+          items: {
+            ...schema.items,
+            properties: newProperties,
+          },
+        };
+      } else {
+        updatedSchema = {
+          ...schema,
+          properties: newProperties,
+        };
+      }
+
+      handleConfigChange(schemaType, updatedSchema);
+
+      // Update global variable name if it exists (only for outputSchema)
+      if (schemaType === "outputSchema" && onVariablesChange && oldName !== newName) {
+        const oldVariableName = `json.${oldName}`;
+        const newVariableName = `json.${newName}`;
+        
+        const updatedVariables = variables.map((v) => {
+          if (v.name === oldVariableName) {
+            return {
+              ...v,
+              name: newVariableName,
+            };
+          }
+          return v;
+        });
+
+        // Check if new variable name already exists
+        const newVarExists = updatedVariables.some((v) => v.name === newVariableName && v.id !== variables.find((v) => v.name === oldVariableName)?.id);
+        
+        if (!newVarExists) {
+          onVariablesChange(updatedVariables);
+        } else {
+          // If new name exists, just remove the old one
+          onVariablesChange(variables.filter((v) => v.name !== oldVariableName));
+        }
+      }
+    };
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-gray-700 capitalize">
+            {schemaType === "inputSchema" ? "Input Schema" : "Output Schema"}
+          </label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddProperty}
+            className="h-7 px-2 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Add Property
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          {propertiesArray.map((property: any, index: number) => (
+            <div
+              key={index}
+              className="p-3 border border-gray-200 rounded-md space-y-2 bg-gray-50"
+            >
+              <div className="flex items-start gap-2">
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Property Name (displays as json.name)
+                    </label>
+                    <Input
+                      type="text"
+                      value={property.name}
+                      onChange={(e) => {
+                        const newName = e.target.value;
+                        handlePropertyChange(property.name, newName, property.type);
+                      }}
+                      placeholder="property_name"
+                      className="h-8 text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Use as: <code className="bg-gray-100 px-1 rounded">{`{{json.${property.name}}}`}</code>
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Type
+                    </label>
+                    <Select
+                      options={SCHEMA_PROPERTY_TYPES}
+                      value={property.type || "string"}
+                      onChange={(e) => handlePropertyChange(property.name, property.name, e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveProperty(property.name)}
+                  className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {propertiesArray.length === 0 && (
+            <div className="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded-md">
+              No properties added. Click "Add Property" to add one.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-80 bg-white border-l border-gray-200 h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -406,16 +725,108 @@ const NodeConfigSection = ({
             />
           </div>
 
-          {/* Render parameters */}
-          {node.config?.parameters && (
-            <div className="space-y-4">
-              <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                Parameters
-              </div>
-              {Object.entries(node.config.parameters).map(([key, value]) =>
-                renderParameterField(key, value, ["parameters"])
-              )}
+          {/* Render parameters - always show section */}
+          <div className="space-y-4">
+            <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              Parameters
             </div>
+            {node.config?.parameters && Object.keys(node.config.parameters).length > 0 ? (
+              Object.entries(node.config.parameters).map(([key, value]) =>
+                renderParameterField(key, value, ["parameters"])
+              )
+            ) : (
+              <div className="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded-md">
+                No parameters configured. Parameters will appear here as you configure the node.
+              </div>
+            )}
+          </div>
+
+          {/* Render inputSchema - only for AI nodes and Excel reader */}
+          {shouldShowSchemas() && (
+            <>
+              {node.config?.inputSchema ? (
+                <div className="space-y-4">
+                  <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                    Input Schema
+                  </div>
+                  {renderSchemaProperties("inputSchema", node.config.inputSchema)}
+                </div>
+              ) : (
+                // Show button to add inputSchema for AI nodes
+                (node.type === "hyperclova" || node.type === "clova-ocr" || node.type === "clova-studio" || node.type === "papago" || node.type === "custom-model") && (
+                  <div className="space-y-4">
+                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                      Input Schema
+                    </div>
+                    <div className="p-4 border border-dashed border-gray-300 rounded-md text-center">
+                      <p className="text-sm text-gray-500 mb-3">
+                        No input schema defined. Add one to define the input structure.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Initialize with empty object schema
+                          handleConfigChange("inputSchema", {
+                            type: "object",
+                            properties: {},
+                          });
+                        }}
+                        className="h-8 px-3 text-xs"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Input Schema
+                      </Button>
+                    </div>
+                  </div>
+                )
+              )}
+
+              {/* Render outputSchema - only for AI nodes and Excel reader */}
+              {node.config?.outputSchema ? (
+                <div className="space-y-4">
+                  <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                    Output Schema
+                  </div>
+                  {renderSchemaProperties("outputSchema", node.config.outputSchema)}
+                  <div className="flex items-start gap-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                    <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-blue-700">
+                      Properties added here will automatically be available as global variables in the format <code className="bg-blue-100 px-1 rounded">json.propertyName</code>. You can use them in other nodes as <code className="bg-blue-100 px-1 rounded">{`{{json.propertyName}}`}</code>.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // Show button to add outputSchema for AI nodes and Excel reader
+                <div className="space-y-4">
+                  <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                    Output Schema
+                  </div>
+                  <div className="p-4 border border-dashed border-gray-300 rounded-md text-center">
+                    <p className="text-sm text-gray-500 mb-3">
+                      No output schema defined. Add one to define the output structure.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Initialize with empty object schema
+                        handleConfigChange("outputSchema", {
+                          type: "object",
+                          properties: {},
+                        });
+                      }}
+                      className="h-8 px-3 text-xs"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Output Schema
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Legacy support for old config format */}

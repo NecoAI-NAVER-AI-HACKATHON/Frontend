@@ -259,12 +259,18 @@ const CanvasSection = ({
           y: event.clientY,
         });
 
+        const defaultConfig = nodeDef.defaultConfig || { name: nodeDef.label };
+        // Ensure parameters object always exists
+        if (!defaultConfig.parameters) {
+          defaultConfig.parameters = {};
+        }
+
         const newNode: WorkflowNode = {
           id: `node-${Date.now()}`,
           type: nodeDef.type,
           name: nodeDef.label,
           position,
-          config: nodeDef.defaultConfig || { name: nodeDef.label },
+          config: defaultConfig,
         };
 
         if (onNodeAdd) {
