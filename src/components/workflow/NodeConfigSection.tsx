@@ -71,6 +71,15 @@ const SCHEMA_PROPERTY_TYPES = [
   { value: "object", label: "Object" },
 ];
 
+const FORMAT_TYPES = [
+  { value: "json", label: "JSON" },
+  { value: "xml", label: "XML" },
+  { value: "csv", label: "CSV" },
+  { value: "yaml", label: "YAML" },
+  { value: "html", label: "HTML" },
+  { value: "text", label: "Plain Text" },
+];
+
 const NodeConfigSection = ({
   node,
   nodes = [],
@@ -192,6 +201,132 @@ const NodeConfigSection = ({
     // Skip teams_data if it's inside injected-data (it's defined in global variables)
     if (key === "teams_data" && path.includes("injected-data")) {
       return null;
+    }
+
+    // Special handling for form submit fields
+    if (key === "formFields" && node.type === "form-submit" && path[0] === "parameters") {
+      const fieldsArray = Array.isArray(value) 
+        ? value 
+        : [];
+
+      const handleAddField = () => {
+        const newFields = [...fieldsArray, { name: "", label: "", type: "text", required: false }];
+        handleNestedConfigChange(fullPath, newFields);
+      };
+
+      const handleRemoveField = (index: number) => {
+        const newFields = fieldsArray.filter((_, i) => i !== index);
+        handleNestedConfigChange(fullPath, newFields);
+      };
+
+      const handleFieldChange = (index: number, fieldKey: string, fieldValue: any) => {
+        const newFields = [...fieldsArray];
+        newFields[index] = { ...newFields[index], [fieldKey]: fieldValue };
+        handleNestedConfigChange(fullPath, newFields);
+      };
+
+      const FORM_FIELD_TYPES = [
+        { value: "text", label: "Text" },
+        { value: "email", label: "Email" },
+        { value: "number", label: "Number" },
+        { value: "textarea", label: "Textarea" },
+        { value: "select", label: "Select" },
+        { value: "checkbox", label: "Checkbox" },
+        { value: "file", label: "File" },
+      ];
+
+      return (
+        <div key={fieldKey} className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-gray-700 capitalize">
+              {key.replace(/([A-Z])/g, " $1").trim()}
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddField}
+              className="h-7 px-2 text-xs"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Field
+            </Button>
+          </div>
+          
+          <div className="space-y-2">
+            {fieldsArray.map((field: any, index: number) => (
+              <div
+                key={index}
+                className="p-3 border border-gray-200 rounded-md space-y-2 bg-gray-50"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Field Name
+                      </label>
+                      <Input
+                        type="text"
+                        value={field.name || ""}
+                        onChange={(e) => handleFieldChange(index, "name", e.target.value)}
+                        placeholder="field_name"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Label
+                      </label>
+                      <Input
+                        type="text"
+                        value={field.label || ""}
+                        onChange={(e) => handleFieldChange(index, "label", e.target.value)}
+                        placeholder="Field Label"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Type
+                      </label>
+                      <Select
+                        options={FORM_FIELD_TYPES}
+                        value={field.type || "text"}
+                        onChange={(e) => handleFieldChange(index, "type", e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={field.required || false}
+                        onChange={(e) => handleFieldChange(index, "required", e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      <label className="text-xs text-gray-600">Required</label>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveField(index)}
+                    className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            
+            {fieldsArray.length === 0 && (
+              <div className="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded-md">
+                No form fields added. Click "Add Field" to add one.
+              </div>
+            )}
+          </div>
+        </div>
+      );
     }
 
     // Special handling for database fields
@@ -399,6 +534,87 @@ const NodeConfigSection = ({
           options={nodeNameOptions}
           value={value || ""}
           onChange={(e) => handleNestedConfigChange(fullPath, e.target.value)}
+        />
+      );
+    } else if (key === "uploadPath" && node.type === "file-upload" && path[0] === "parameters") {
+      // File upload path input
+      inputElement = (
+        <Input
+          type="text"
+          value={value || ""}
+          onChange={(e) => handleNestedConfigChange(fullPath, e.target.value)}
+          placeholder="/uploads"
+        />
+      );
+    } else if (key === "allowedTypes" && node.type === "file-upload" && path[0] === "parameters") {
+      // Allowed file types - render as comma-separated input
+      const typesArray = Array.isArray(value) ? value : (value ? [value] : []);
+      const typesString = typesArray.join(", ");
+      inputElement = (
+        <div className="space-y-2">
+          <Input
+            type="text"
+            value={typesString}
+            onChange={(e) => {
+              const types = e.target.value.split(",").map(t => t.trim()).filter(t => t);
+              handleNestedConfigChange(fullPath, types);
+            }}
+            placeholder="image/png, image/jpeg, application/pdf"
+          />
+          <p className="text-xs text-gray-500">
+            Enter comma-separated MIME types (e.g., image/png, application/pdf)
+          </p>
+        </div>
+      );
+    } else if (key === "maxSize" && node.type === "file-upload" && path[0] === "parameters") {
+      // Max file size in MB
+      const sizeInMB = value ? (value / 1048576).toFixed(2) : "";
+      inputElement = (
+        <div className="space-y-2">
+          <Input
+            type="number"
+            value={sizeInMB}
+            onChange={(e) => {
+              const mb = parseFloat(e.target.value) || 0;
+              handleNestedConfigChange(fullPath, Math.round(mb * 1048576));
+            }}
+            placeholder="10"
+            step="0.1"
+          />
+          <p className="text-xs text-gray-500">Maximum file size in MB</p>
+        </div>
+      );
+    } else if (key === "formatType" && node.type === "format" && path[0] === "parameters") {
+      inputElement = (
+        <Select
+          options={FORMAT_TYPES}
+          value={value || "json"}
+          onChange={(e) => handleNestedConfigChange(fullPath, e.target.value)}
+        />
+      );
+    } else if (key === "template" && node.type === "format" && path[0] === "parameters") {
+      inputElement = (
+        <textarea
+          className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm font-mono"
+          value={value || ""}
+          onChange={(e) => handleNestedConfigChange(fullPath, e.target.value)}
+          placeholder="Enter format template"
+        />
+      );
+    } else if (key === "statusCode" && node.type === "webhook-response" && path[0] === "parameters") {
+      const STATUS_CODES = [
+        { value: "200", label: "200 OK" },
+        { value: "201", label: "201 Created" },
+        { value: "400", label: "400 Bad Request" },
+        { value: "401", label: "401 Unauthorized" },
+        { value: "404", label: "404 Not Found" },
+        { value: "500", label: "500 Internal Server Error" },
+      ];
+      inputElement = (
+        <Select
+          options={STATUS_CODES}
+          value={String(value || 200)}
+          onChange={(e) => handleNestedConfigChange(fullPath, parseInt(e.target.value))}
         />
       );
     } else if (key === "code" || key === "prompt" || key === "body") {

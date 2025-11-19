@@ -23,6 +23,10 @@ import {
   ArrowLeftRight,
   Repeat,
   FileText,
+  Upload,
+  FileEdit,
+  FileCode,
+  Send,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -39,6 +43,8 @@ const iconMap: Record<string, LucideIcon> = {
   webhook: Zap,
   schedule: Zap,
   manual: Zap,
+  "file-upload": Upload,
+  "form-submit": FileEdit,
   hyperclova: Globe,
   "clova-ocr": Globe,
   "clova-studio": Globe,
@@ -47,12 +53,14 @@ const iconMap: Record<string, LucideIcon> = {
   function: ArrowLeftRight,
   split: ArrowLeftRight,
   merge: ArrowLeftRight,
+  format: FileCode,
   "if-else": Repeat,
   loop: Repeat,
   switch: Repeat,
   "http-request": FileText,
   database: FileText,
-  email: FileText,
+  email: Send,
+  "webhook-response": FileText,
 };
 
 const nodeTypes = {

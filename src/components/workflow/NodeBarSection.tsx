@@ -4,6 +4,10 @@ import {
   ArrowLeftRight,
   Repeat,
   FileText,
+  Upload,
+  FileEdit,
+  FileCode,
+  Send,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { NodeDefinition, NodeCategory } from "../../types/workflow";
@@ -57,6 +61,37 @@ const nodeDefinitions: NodeDefinition[] = [
       type: "trigger",
       subtype: "manual",
       parameters: {},
+    },
+  },
+  { 
+    type: "file-upload", 
+    label: "File Upload", 
+    category: "trigger", 
+    icon: "Upload",
+    defaultConfig: {
+      name: "File Upload",
+      type: "trigger",
+      subtype: "file-upload",
+      parameters: {
+        allowedTypes: [],
+        maxSize: 10485760, // 10MB in bytes
+        uploadPath: "",
+      },
+    },
+  },
+  { 
+    type: "form-submit", 
+    label: "Form Submit", 
+    category: "trigger", 
+    icon: "FileEdit",
+    defaultConfig: {
+      name: "Form Submit",
+      type: "trigger",
+      subtype: "form-submit",
+      parameters: {
+        formFields: [],
+        submitUrl: "",
+      },
     },
   },
   // AI Processing
@@ -210,6 +245,21 @@ const nodeDefinitions: NodeDefinition[] = [
       parameters: {},
     },
   },
+  { 
+    type: "format", 
+    label: "Format", 
+    category: "transform", 
+    icon: "FileCode",
+    defaultConfig: {
+      name: "Format",
+      type: "data-transform",
+      subtype: "format",
+      parameters: {
+        formatType: "json",
+        template: "",
+      },
+    },
+  },
   // Control
   { 
     type: "if-else", 
@@ -273,11 +323,11 @@ const nodeDefinitions: NodeDefinition[] = [
   },
   { 
     type: "database", 
-    label: "Database", 
+    label: "Database Writer", 
     category: "output", 
     icon: "FileText",
     defaultConfig: {
-      name: "Database",
+      name: "Database Writer",
       type: "output",
       subtype: "database",
       parameters: {
@@ -289,11 +339,11 @@ const nodeDefinitions: NodeDefinition[] = [
   },
   { 
     type: "email", 
-    label: "Email", 
+    label: "Email Sender", 
     category: "output", 
-    icon: "FileText",
+    icon: "Send",
     defaultConfig: {
-      name: "Email",
+      name: "Email Sender",
       type: "output",
       subtype: "mail-writer",
       parameters: {
@@ -306,6 +356,22 @@ const nodeDefinitions: NodeDefinition[] = [
       },
     },
   },
+  { 
+    type: "webhook-response", 
+    label: "Webhook Response", 
+    category: "output", 
+    icon: "FileText",
+    defaultConfig: {
+      name: "Webhook Response",
+      type: "output",
+      subtype: "webhook-response",
+      parameters: {
+        statusCode: 200,
+        headers: {},
+        body: "",
+      },
+    },
+  },
 ];
 
 const iconMap: Record<string, LucideIcon> = {
@@ -314,6 +380,10 @@ const iconMap: Record<string, LucideIcon> = {
   ArrowLeftRight,
   Repeat,
   FileText,
+  Upload,
+  FileEdit,
+  FileCode,
+  Send,
 };
 
 // Draggable Node Item Component

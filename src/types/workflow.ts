@@ -5,6 +5,8 @@ export type NodeType =
   | "webhook"
   | "schedule"
   | "manual"
+  | "file-upload"
+  | "form-submit"
   // AI Processing
   | "hyperclova"
   | "clova-ocr"
@@ -15,6 +17,7 @@ export type NodeType =
   | "function"
   | "split"
   | "merge"
+  | "format"
   // Control
   | "if-else"
   | "loop"
@@ -22,7 +25,8 @@ export type NodeType =
   // Output
   | "http-request"
   | "database"
-  | "email";
+  | "email"
+  | "webhook-response";
 
 export interface WorkflowNode {
   id: string;
