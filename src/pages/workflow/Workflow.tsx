@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import WorkflowNav from "../../components/workflow/WorkflowNav";
 import NodeBarSection from "../../components/workflow/NodeBarSection";
-import NodeConfigSection from "../../components/workflow/NodeConfigSection";
+import NodeConfigSection from "../../components/workflow/NodeConfigSection/index";
 import CanvasSection from "../../components/workflow/CanvasSection";
 import LogSection from "../../components/workflow/LogSection";
 import VariablesSidebar from "../../components/workflow/VariablesSidebar";

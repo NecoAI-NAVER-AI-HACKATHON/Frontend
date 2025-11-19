@@ -170,7 +170,7 @@ const VariablesSidebar = ({
                 ) : (
                   <>
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <code className="text-sm font-mono text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
                             {`{{${variable.name}}}`}
@@ -179,7 +179,7 @@ const VariablesSidebar = ({
                             variant="ghost"
                             size="icon"
                             onClick={() => copyVariableTemplate(variable.name)}
-                            className="h-6 w-6 text-gray-500 hover:text-indigo-600"
+                            className="h-6 w-6 text-gray-500 hover:text-indigo-600 flex-shrink-0"
                             title="Copy template"
                           >
                             <Copy className="w-3 h-3" />
@@ -190,13 +190,13 @@ const VariablesSidebar = ({
                             {variable.description}
                           </p>
                         )}
-                        <div className="max-w-full overflow-hidden">
-                          <p className="text-xs text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded break-words whitespace-pre-wrap">
+                        <div className="max-h-[200px] overflow-y-auto overflow-x-auto rounded border border-gray-200 bg-gray-50">
+                          <pre className="text-xs text-gray-600 font-mono px-2 py-1 m-0 whitespace-pre-wrap break-words">
                             {variable.value || "(empty)"}
-                          </p>
+                          </pre>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col items-center gap-1 flex-shrink-0 ml-2">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -270,7 +270,7 @@ const EditVariableForm = ({
           <textarea
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="w-full min-h-[120px] max-h-[300px] rounded-md border border-input bg-transparent px-3 py-2 text-xs font-mono shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+            className="w-full min-h-[120px] max-h-[300px] rounded-md border border-input bg-transparent px-3 py-2 text-xs font-mono shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y overflow-y-auto"
             placeholder="Enter JSON value"
             style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
           />
