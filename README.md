@@ -16,3 +16,4 @@ Then open your browser at:
 ```
 http://localhost:5173/
 ```
+

@@ -5,17 +5,23 @@ import Register from "./pages/auth/Register";
 import Layout from "./components/layout/Layout";
 import NotFoundPage from "./pages/notfoundpage/NotFoundPage";
 import WorkspaceDetail from "./pages/workspaces/WorkspaceDetail";
-import Workflow from "./pages/workflow/Workflow";
+import WorkflowPage from "./pages/workflow/Workflow";
 import LandingPage from "./pages/landing/LandingPage";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Settings from "./pages/settings/Settings";
+import { WorkflowsProvider } from "./contexts/WorkflowsContext";
+import { WorkspacesProvider } from "./contexts/WorkspacesContext";
+import { SystemsProvider } from "./contexts/SystemsContext";
 
 import "./index.css";
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <WorkspacesProvider>
+      <SystemsProvider>
+        <WorkflowsProvider>
+          <Router>
+        <Routes>
         {/* First page (Landing Page) */}
         <Route path="/" element={<LandingPage />} />
 
@@ -32,13 +38,19 @@ function App() {
           <Route path="/settings" element={<Settings />} />
         </Route>
 
-        {/* Workflow page (standalone, no Layout) */}
-        <Route path="/workflow" element={<Workflow />} />
-        <Route path="/workflow/:id" element={<Workflow />} />
+        {/* Workflow page (standalone, no Layout) 
+            Example: /workflow/wf-feedback-daily
+            Or: /workspaces/:workspaceId/systems/:systemId/workflow */}
+        <Route path="/workflow" element={<WorkflowPage />} />
+        <Route path="/workflow/:id" element={<WorkflowPage />} />
+        <Route path="/workspaces/:workspaceId/systems/:systemId/workflow" element={<WorkflowPage />} />
 
         <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+        </WorkflowsProvider>
+      </SystemsProvider>
+    </WorkspacesProvider>
   );
 }
 

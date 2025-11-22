@@ -19,10 +19,12 @@ import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkspaceService } from "@/lib/services/workspaceService";
+import { useWorkspaces } from "@/contexts/WorkspacesContext";
 import WorkspacesSkeleton from "@/components/workspaces/WorkspacesSkeleton";
 
 const Workspaces = () => {
   const navigate = useNavigate();
+  const { workspaces: contextWorkspaces, isLoading: contextLoading } = useWorkspaces();
 
   const [loading, setLoading] = useState(true);
 
@@ -83,20 +85,30 @@ const Workspaces = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await WorkspaceService.getAllWorkspaces();
-        setWorkspaces(response.workspaces);
-        setTotalItems(response.total);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
+    // Use context data if available, otherwise fetch from service
+    if (!contextLoading) {
+      if (contextWorkspaces.length > 0) {
+        setWorkspaces(contextWorkspaces);
+        setTotalItems(contextWorkspaces.length);
+      } else {
+        // If context is empty, try service
+        const fetchData = async () => {
+          try {
+            const response = await WorkspaceService.getAllWorkspaces();
+            setWorkspaces(response.workspaces);
+            setTotalItems(response.total);
+          } catch (error) {
+            console.log(error);
+          } finally {
+            setLoading(false);
+          }
+        };
+        fetchData();
+        return;
       }
-    };
-
-    fetchData();
-  }, []);
+      setLoading(false);
+    }
+  }, [contextWorkspaces, contextLoading]);
 
   return (
     <div

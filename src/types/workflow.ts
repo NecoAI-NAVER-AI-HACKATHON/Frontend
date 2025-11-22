@@ -5,15 +5,19 @@ export type NodeType =
   | "webhook"
   | "schedule"
   | "manual"
+  | "file-upload"
+  | "form-submit"
   // AI Processing
   | "hyperclova"
   | "clova-ocr"
+  | "clova-studio"
   | "papago"
   | "custom-model"
   // Transform
-  | "json-parser"
-  | "filter"
+  | "function"
+  | "split"
   | "merge"
+  | "format"
   // Control
   | "if-else"
   | "loop"
@@ -21,7 +25,8 @@ export type NodeType =
   // Output
   | "http-request"
   | "database"
-  | "email";
+  | "email"
+  | "webhook-response";
 
 export interface WorkflowNode {
   id: string;
@@ -44,6 +49,13 @@ export interface NodeDefinition {
   defaultConfig?: Record<string, any>;
 }
 
+export interface CustomVariable {
+  id: string;
+  name: string;
+  value: string;
+  description?: string;
+}
+
 export interface Workflow {
   id: string;
   name: string;
@@ -52,6 +64,7 @@ export interface Workflow {
     from: string;
     to: string;
   }>;
+  variables?: CustomVariable[];
 }
 
 export interface ExecutionLog {

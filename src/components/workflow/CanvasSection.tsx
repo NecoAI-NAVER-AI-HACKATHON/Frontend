@@ -23,6 +23,10 @@ import {
   ArrowLeftRight,
   Repeat,
   FileText,
+  Upload,
+  FileEdit,
+  FileCode,
+  Send,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -39,19 +43,24 @@ const iconMap: Record<string, LucideIcon> = {
   webhook: Zap,
   schedule: Zap,
   manual: Zap,
+  "file-upload": Upload,
+  "form-submit": FileEdit,
   hyperclova: Globe,
   "clova-ocr": Globe,
+  "clova-studio": Globe,
   papago: Globe,
   "custom-model": Globe,
-  "json-parser": ArrowLeftRight,
-  filter: ArrowLeftRight,
+  function: ArrowLeftRight,
+  split: ArrowLeftRight,
   merge: ArrowLeftRight,
+  format: FileCode,
   "if-else": Repeat,
   loop: Repeat,
   switch: Repeat,
   "http-request": FileText,
   database: FileText,
-  email: FileText,
+  email: Send,
+  "webhook-response": FileText,
 };
 
 const nodeTypes = {
@@ -258,12 +267,18 @@ const CanvasSection = ({
           y: event.clientY,
         });
 
+        const defaultConfig = nodeDef.defaultConfig || { name: nodeDef.label };
+        // Ensure parameters object always exists
+        if (!defaultConfig.parameters) {
+          defaultConfig.parameters = {};
+        }
+
         const newNode: WorkflowNode = {
           id: `node-${Date.now()}`,
           type: nodeDef.type,
           name: nodeDef.label,
           position,
-          config: nodeDef.defaultConfig || { name: nodeDef.label },
+          config: defaultConfig,
         };
 
         if (onNodeAdd) {

@@ -1,15 +1,18 @@
 import { ChevronRight, Plus, SplinePointer } from "lucide-react";
 import SystemAdding from "./SystemAdding";
 import dayjs from "dayjs";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { SystemService } from "@/lib/services/systemService";
+import { useSystems } from "@/contexts/SystemsContext";
 import type { System } from "@/lib/services/systemService";
 import SystemsSkeleton from "@/components/workspace_systems/SystemsSkeleton";
 
 const Systems = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const workspace_id = id as string;
+  const { getSystemsByWorkspace, systems: allSystems, isLoading: contextLoading } = useSystems();
 
   const [systems, setSystems] = useState<System[]>([]);
   const [totalItems, setTotalItems] = useState<number>();
@@ -20,20 +23,28 @@ const Systems = () => {
   const [showAddingSystem, setShowAddingSystem] = useState<boolean>(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await SystemService.getAllSystems(workspace_id);
-        setSystems(response.systems);
-        setTotalItems(response.total);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+    // Use context data if available, otherwise fetch from service
+    if (!contextLoading) {
+      const contextSystems = getSystemsByWorkspace(workspace_id);
+      setSystems(contextSystems);
+      setTotalItems(contextSystems.length);
+      setLoading(false);
+    } else {
+      // If context is still loading, try service as fallback
+      const fetchData = async () => {
+        try {
+          const response = await SystemService.getAllSystems(workspace_id);
+          setSystems(response.systems);
+          setTotalItems(response.total);
+        } catch (error) {
+          console.log(error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
+    }
+  }, [workspace_id, allSystems, contextLoading, getSystemsByWorkspace]);
 
   return (
     <div className="flex flex-col">
@@ -84,6 +95,7 @@ const Systems = () => {
                 className="bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer 
          transition duration-300 ease-in-out
          hover:bg-[#F9FAFB] hover:shadow-lg hover:-translate-y-1"
+                onClick={() => navigate(`/workspaces/${workspace_id}/systems/${system.id}/workflow`)}
               >
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">

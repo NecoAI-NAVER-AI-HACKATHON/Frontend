@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import type { WorkflowNode, ExecutionLog, Workflow } from "../types/workflow";
 
 interface WorkflowContextType {
@@ -13,6 +13,9 @@ interface WorkflowContextType {
   addNode: (node: WorkflowNode) => void;
   deleteNode: (nodeId: string) => void;
   addLog: (log: ExecutionLog) => void;
+  saveWorkflow: () => void;
+  updateWorkflowName: (name: string) => void;
+  updateWorkflowVariables: (variables: any[] | undefined) => void;
 }
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
@@ -28,15 +31,20 @@ export const useWorkflow = () => {
 interface WorkflowProviderProps {
   children: ReactNode;
   initialWorkflow?: Workflow;
+  onWorkflowChange?: (workflow: Workflow) => void;
 }
 
-export const WorkflowProvider = ({ children, initialWorkflow }: WorkflowProviderProps) => {
+export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }: WorkflowProviderProps) => {
   const [workflow, setWorkflow] = useState<Workflow | null>(initialWorkflow || null);
   const [nodes, setNodes] = useState<WorkflowNode[]>(initialWorkflow?.nodes || []);
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // Update workflow when nodes change
+  // Ref to track if this is the initial load (to avoid saving on mount)
+  const isInitialLoad = useRef(true);
+
+  // Update workflow state locally when nodes change (but don't auto-save)
+  // This keeps the workflow object in sync for UI purposes
   useEffect(() => {
     if (workflow) {
       const updatedWorkflow: Workflow = {
@@ -50,13 +58,23 @@ export const WorkflowProvider = ({ children, initialWorkflow }: WorkflowProvider
           }
           return acc;
         }, [] as Array<{ from: string; to: string }>),
+        // Preserve variables when updating workflow
+        variables: workflow.variables,
       };
-      setWorkflow(updatedWorkflow);
-      
-      // Console log the workflow state
-      console.log("Workflow State Updated:", updatedWorkflow);
+      // Only update workflow state if nodes actually changed (prevent unnecessary updates)
+      const nodesChanged = JSON.stringify(workflow.nodes) !== JSON.stringify(nodes);
+      if (nodesChanged) {
+        setWorkflow(updatedWorkflow);
+        // Don't auto-save - only update local state
+        console.log("Workflow State Updated (local only):", updatedWorkflow);
+      }
     }
-  }, [nodes, workflow?.id, workflow?.name]);
+    
+    // Mark initial load as complete after first render
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+    }
+  }, [nodes, workflow?.id, workflow?.name, workflow?.variables]);
 
   const updateNode = useCallback((nodeId: string, updates: Partial<WorkflowNode>) => {
     setNodes((prev) =>
@@ -92,6 +110,61 @@ export const WorkflowProvider = ({ children, initialWorkflow }: WorkflowProvider
     setLogs((prev) => [log, ...prev]);
   }, []);
 
+  const saveWorkflow = useCallback(() => {
+    if (workflow) {
+      // Build the current workflow state from nodes
+      const currentWorkflow: Workflow = {
+        ...workflow,
+        nodes,
+        connections: nodes.reduce((acc, node) => {
+          if (node.connections?.output) {
+            node.connections.output.forEach((targetId) => {
+              acc.push({ from: node.id, to: targetId });
+            });
+          }
+          return acc;
+        }, [] as Array<{ from: string; to: string }>),
+        // Preserve variables when saving
+        variables: workflow.variables,
+      };
+      
+      // Update local workflow state
+      setWorkflow(currentWorkflow);
+      
+      // Persist to storage via callback if provided
+      if (onWorkflowChange) {
+        onWorkflowChange(currentWorkflow);
+        console.log("Workflow manually saved:", currentWorkflow.id);
+      } else {
+        console.warn("Cannot save workflow: onWorkflowChange not available");
+      }
+    } else {
+      console.warn("Cannot save workflow: workflow is null");
+    }
+  }, [workflow, nodes, onWorkflowChange]);
+
+  const updateWorkflowName = useCallback((name: string) => {
+    if (workflow) {
+      const updatedWorkflow: Workflow = {
+        ...workflow,
+        name,
+      };
+      setWorkflow(updatedWorkflow);
+      // Don't auto-save name changes - only update local state
+    }
+  }, [workflow]);
+
+  const updateWorkflowVariables = useCallback((variables: any[] | undefined) => {
+    if (workflow) {
+      const updatedWorkflow: Workflow = {
+        ...workflow,
+        variables: variables || [],
+      };
+      setWorkflow(updatedWorkflow);
+      // Don't auto-save variable changes - only update local state
+    }
+  }, [workflow]);
+
   const value: WorkflowContextType = {
     workflow,
     nodes,
@@ -104,6 +177,9 @@ export const WorkflowProvider = ({ children, initialWorkflow }: WorkflowProvider
     addNode,
     deleteNode,
     addLog,
+    saveWorkflow,
+    updateWorkflowName,
+    updateWorkflowVariables,
   };
 
   return <WorkflowContext.Provider value={value}>{children}</WorkflowContext.Provider>;

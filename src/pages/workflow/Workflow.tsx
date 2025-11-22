@@ -1,15 +1,20 @@
-import { useState, useCallback, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import WorkflowNav from "../../components/workflow/WorkflowNav";
 import NodeBarSection from "../../components/workflow/NodeBarSection";
-import NodeConfigSection from "../../components/workflow/NodeConfigSection";
+import NodeConfigSection from "../../components/workflow/NodeConfigSection/index";
 import CanvasSection from "../../components/workflow/CanvasSection";
 import LogSection from "../../components/workflow/LogSection";
+import VariablesSidebar from "../../components/workflow/VariablesSidebar";
 import { WorkflowProvider, useWorkflow } from "../../contexts/WorkflowContext";
+import { useWorkflows } from "../../contexts/WorkflowsContext";
+import { useSystems } from "../../contexts/SystemsContext";
 import type {
   WorkflowNode,
   NodeDefinition,
   ExecutionLog,
+  Workflow,
+  CustomVariable,
 } from "../../types/workflow";
 import {
   mockWorkflowId,
@@ -18,12 +23,20 @@ import {
   mockExecutionLogs,
 } from "../../mockdata/WorkflowData";
 
-const WorkflowContent = () => {
+interface WorkflowContentProps {
+  workspaceId?: string;
+  systemId?: string;
+}
+
+const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
   const { id } = useParams<{ id?: string }>();
-  const isMockWorkflow = id === mockWorkflowId;
-  const workflowName = isMockWorkflow
-    ? mockWorkflow.name
-    : id || "summary agent";
+  const navigate = useNavigate();
+  const workflowId = systemId || id;
+  const isMockWorkflow = workflowId === mockWorkflowId;
+  const { workflow } = useWorkflow();
+  const { deleteWorkflow: deleteWorkflowFromStorage, saveWorkflow: saveToStorage, revertMockWorkflow } = useWorkflows();
+  
+  const workflowName = workflow?.name || (isMockWorkflow ? mockWorkflow.name : id || "New Workflow");
 
   // Use workflow context
   const {
@@ -37,48 +50,117 @@ const WorkflowContent = () => {
     addNode,
     deleteNode,
     addLog,
+    updateWorkflowVariables,
   } = useWorkflow();
 
   const [selectedNodeType, setSelectedNodeType] = useState<string | undefined>(
     undefined
   );
   const [showConfig, setShowConfig] = useState(false);
+  const [showVariables, setShowVariables] = useState(false);
+  const [variables, setVariables] = useState<CustomVariable[]>(
+    workflow?.variables || []
+  );
 
-  // Load mock data if ID matches
+  // Track the workflow ID we've initialized for
+  const initializedWorkflowId = useRef<string | null>(null);
+  const workflowNodesRef = useRef<WorkflowNode[]>([]);
+
+  // Load nodes and variables from workflow only on initial load or when workflow ID changes
   useEffect(() => {
-    if (isMockWorkflow) {
-      setNodes(mockWorkflowNodes);
-      setLogs(mockExecutionLogs);
-      // Select first node by default
-      if (mockWorkflowNodes.length > 0) {
-        setSelectedNodeId(mockWorkflowNodes[0].id);
-        setSelectedNodeType(mockWorkflowNodes[0].type);
-        setShowConfig(true);
+    const currentWorkflowId = workflow?.id || null;
+    
+    // Only initialize if this is a new workflow (ID changed)
+    if (currentWorkflowId !== initializedWorkflowId.current) {
+      if (workflow) {
+        // Initial load - sync nodes from workflow
+        if (workflow.nodes && workflow.nodes.length > 0) {
+          setNodes(workflow.nodes);
+          workflowNodesRef.current = workflow.nodes;
+          // Select first node by default if none selected
+          if (workflow.nodes.length > 0) {
+            setSelectedNodeId(workflow.nodes[0].id);
+            setSelectedNodeType(workflow.nodes[0].type);
+          }
+        } else {
+          // Empty workflow - no nodes yet
+          setNodes([]);
+          workflowNodesRef.current = [];
+          setSelectedNodeId(null);
+        }
+        // Load variables from workflow
+        setVariables(workflow.variables || []);
+        initializedWorkflowId.current = currentWorkflowId;
+      } else if (isMockWorkflow && currentWorkflowId === mockWorkflowId) {
+        // For mock workflow, check if there's a saved version first
+        // The workflow object will already have the saved version if it exists
+        const workflowToUse = workflow || mockWorkflow;
+        const nodesToUse = workflowToUse.nodes && workflowToUse.nodes.length > 0 
+          ? workflowToUse.nodes 
+          : mockWorkflowNodes;
+        const variablesToUse = workflowToUse.variables || mockWorkflow.variables || [];
+        
+        setNodes(nodesToUse);
+        workflowNodesRef.current = nodesToUse;
+        setLogs(mockExecutionLogs);
+        setVariables(variablesToUse);
+        if (nodesToUse.length > 0) {
+          setSelectedNodeId(nodesToUse[0].id);
+          setSelectedNodeType(nodesToUse[0].type);
+          setShowConfig(true);
+        }
+        initializedWorkflowId.current = mockWorkflowId;
+      } else if (!workflow && !isMockWorkflow) {
+        // No workflow loaded yet
+        setNodes([]);
+        workflowNodesRef.current = [];
+        setLogs([]);
+        setVariables([]);
+        setSelectedNodeId(null);
+        setShowConfig(false);
+        initializedWorkflowId.current = null;
       }
-    } else {
-      // Default empty state for new workflows
-      setNodes([]);
-      setLogs([]);
-      setSelectedNodeId(null);
-      setShowConfig(false);
     }
-  }, [id, isMockWorkflow]);
+    // Only depend on workflow ID, not the whole workflow object or selectedNodeId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflow?.id, isMockWorkflow]);
+
+  // Sync variables to workflow object when they change (but don't auto-save)
+  // This ensures variables are preserved when workflow updates
+  useEffect(() => {
+    if (workflow && updateWorkflowVariables) {
+      // Update workflow object in context to preserve variables
+      // This prevents variables from being lost when nodes change
+      const variablesChanged = JSON.stringify(workflow.variables || []) !== JSON.stringify(variables);
+      if (variablesChanged) {
+        // Update the workflow object with current variables
+        updateWorkflowVariables(variables);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variables, updateWorkflowVariables]);
 
   // Handlers
   const handleNodeSelect = useCallback((nodeDef: NodeDefinition) => {
     setSelectedNodeType(nodeDef.type);
     // Add new node to canvas with better positioning
-    const newNode: WorkflowNode = {
-      id: `node-${Date.now()}`,
-      type: nodeDef.type,
-      name: nodeDef.label,
-      position: {
-        // Place new nodes in a grid-like pattern
-        x: 300 + (nodes.length % 3) * 250,
-        y: 150 + Math.floor(nodes.length / 3) * 150,
-      },
-      config: nodeDef.defaultConfig || { name: nodeDef.label },
-    };
+      const defaultConfig = nodeDef.defaultConfig || { name: nodeDef.label };
+      // Ensure parameters object always exists
+      if (!defaultConfig.parameters) {
+        defaultConfig.parameters = {};
+      }
+
+      const newNode: WorkflowNode = {
+        id: `node-${Date.now()}`,
+        type: nodeDef.type,
+        name: nodeDef.label,
+        position: {
+          // Place new nodes in a grid-like pattern
+          x: 300 + (nodes.length % 3) * 250,
+          y: 150 + Math.floor(nodes.length / 3) * 150,
+        },
+        config: defaultConfig,
+      };
     addNode(newNode);
     setSelectedNodeId(newNode.id);
     setShowConfig(true);
@@ -139,6 +221,37 @@ const WorkflowContent = () => {
   );
 
   const handleRun = () => {
+    // Convert workflow to backend JSON format
+    const workflowJson = {
+      id: workflow?.id || mockWorkflowId,
+      name: workflow?.name || "Daily Feedback Batch Processor",
+      nodes: nodes.map((node) => {
+        const nodeJson: any = {
+          name: node.config?.name || node.name,
+          type: node.config?.type || node.type,
+          subtype: node.config?.subtype || node.type,
+          position: [node.position.x, node.position.y],
+          parameters: node.config?.parameters || {},
+        };
+        
+        // Add inputSchema if it exists
+        if (node.config?.inputSchema) {
+          nodeJson.inputSchema = node.config.inputSchema;
+        }
+        
+        // Add outputSchema if it exists
+        if (node.config?.outputSchema) {
+          nodeJson.outputSchema = node.config.outputSchema;
+        }
+        
+        return nodeJson;
+      }),
+      connections: buildConnectionsArray(nodes),
+    };
+    
+    // Console log the JSON that would be sent to backend
+    console.log("Workflow JSON to send to backend:", JSON.stringify(workflowJson, null, 2));
+    
     // Simulate workflow execution
     const newLog: ExecutionLog = {
       id: `log-${Date.now()}`,
@@ -154,20 +267,118 @@ const WorkflowContent = () => {
     addLog(newLog);
   };
 
-  const handleSave = () => {
-    // Save workflow logic
-    console.log("Saving workflow:", { nodes, workflowName });
+  // Helper function to build connections array in the format: [{ main: [[{sourceNode, targetNode, inputIndex}]] }]
+  const buildConnectionsArray = (workflowNodes: WorkflowNode[]) => {
+    const connections: any[] = [];
+    const nodeNameMap = new Map<string, string>(); // Map node ID to node name
+    
+    // Build node name map
+    workflowNodes.forEach((node) => {
+      nodeNameMap.set(node.id, node.config?.name || node.name);
+    });
+    
+    // Group connections by source node
+    const connectionsBySource = new Map<string, Array<{ sourceNode: string; targetNode: string; inputIndex: number }>>();
+    
+    workflowNodes.forEach((node) => {
+      if (node.connections?.output) {
+        node.connections.output.forEach((targetId) => {
+          const sourceName = nodeNameMap.get(node.id) || node.id;
+          const targetName = nodeNameMap.get(targetId) || targetId;
+          
+          if (!connectionsBySource.has(sourceName)) {
+            connectionsBySource.set(sourceName, []);
+          }
+          
+          connectionsBySource.get(sourceName)!.push({
+            sourceNode: sourceName,
+            targetNode: targetName,
+            inputIndex: 0, // Default to 0, can be enhanced later
+          });
+        });
+      }
+    });
+    
+    // Build connections array structure
+    connectionsBySource.forEach((conns) => {
+      // Check if any target is "End Node" (special case for if-else)
+      const mainConnections: any[] = [];
+      const subConnections: any[] = [];
+      
+      conns.forEach((conn) => {
+        if (conn.targetNode === "End Node") {
+          subConnections.push(conn);
+        } else {
+          mainConnections.push(conn);
+        }
+      });
+      
+      const connectionGroup: any = {};
+      if (mainConnections.length > 0) {
+        connectionGroup.main = [mainConnections];
+      }
+      if (subConnections.length > 0) {
+        connectionGroup.sub = [subConnections];
+      }
+      
+      if (Object.keys(connectionGroup).length > 0) {
+        connections.push(connectionGroup);
+      }
+    });
+    
+    return connections;
   };
 
-  const handleExport = () => {
-    // Export workflow logic
-    console.log("Exporting workflow:", { nodes, workflowName });
+  const handleVariablesChange = useCallback((newVariables: CustomVariable[]) => {
+    setVariables(newVariables);
+    // Variables will be saved when user clicks Save button
+  }, []);
+
+  const handleSave = () => {
+    // Save workflow to localStorage with variables
+    if (workflow) {
+      // Update workflow with current variables before saving
+      const workflowToSave: Workflow = {
+        ...workflow,
+        variables,
+      };
+      // Save directly to WorkflowsContext with variables included
+      // Mock workflow can now be saved to localStorage, but original remains in code
+      saveToStorage(workflowToSave);
+      alert("Workflow saved successfully!");
+    } else {
+      alert("No workflow to save.");
+    }
+  };
+
+  const handleRevert = () => {
+    if (isMockWorkflow) {
+      if (confirm("Are you sure you want to revert the mock workflow to its original state? This will discard all changes saved in localStorage.")) {
+        revertMockWorkflow();
+        // Reload the page to refresh the workflow
+        window.location.reload();
+      }
+    }
   };
 
   const handleDelete = () => {
-    // Delete workflow logic
-    if (confirm("Are you sure you want to delete this workflow?")) {
-      console.log("Deleting workflow:", workflowName);
+    // Delete workflow from localStorage
+    const workflowIdToDelete = systemId || id;
+    if (workflowIdToDelete && !isMockWorkflow) {
+      if (confirm("Are you sure you want to delete this workflow? This action cannot be undone.")) {
+        deleteWorkflowFromStorage(workflowIdToDelete);
+        alert("Workflow deleted successfully!");
+        // Navigate back to workspace or systems page
+        if (workspaceId && systemId) {
+          navigate(`/workspaces/${workspaceId}`);
+        } else {
+          navigate("/workspaces");
+        }
+      }
+    } else if (isMockWorkflow) {
+      alert("Cannot delete mock workflow.");
+    } else {
+      alert("No workflow to delete.");
     }
   };
 
@@ -178,10 +389,15 @@ const WorkflowContent = () => {
         {/* Top Navigation */}
         <WorkflowNav
           workflowName={workflowName}
+          workspaceId={workspaceId}
+          systemId={systemId}
           onRun={handleRun}
           onSave={handleSave}
-          onExport={handleExport}
           onDelete={handleDelete}
+          onVariablesToggle={() => setShowVariables(!showVariables)}
+          showVariables={showVariables}
+          onRevert={handleRevert}
+          isMockWorkflow={isMockWorkflow}
         />
 
         {/* Main Content Area */}
@@ -212,15 +428,25 @@ const WorkflowContent = () => {
             <LogSection logs={logs} />
           </div>
 
-          {/* Right Sidebar - Node Configuration */}
-          {showConfig && selectedNode && (
+          {/* Right Sidebar - Node Configuration or Variables */}
+          {showVariables && (
+            <VariablesSidebar
+              variables={variables}
+              onVariablesChange={handleVariablesChange}
+              onClose={() => setShowVariables(false)}
+            />
+          )}
+          {showConfig && selectedNode && !showVariables && (
             <NodeConfigSection
               node={selectedNode}
+              nodes={nodes}
               onClose={() => {
                 setShowConfig(false);
                 setSelectedNodeId(null);
               }}
               onConfigChange={handleConfigChange}
+              variables={variables}
+              onVariablesChange={handleVariablesChange}
             />
           )}
         </div>
@@ -229,18 +455,113 @@ const WorkflowContent = () => {
 };
 
 const Workflow = () => {
-  const { id } = useParams<{ id?: string }>();
-  const isMockWorkflow = id === mockWorkflowId;
-  const initialWorkflow = isMockWorkflow ? mockWorkflow : {
-    id: id || "new-workflow",
-    name: id || "summary agent",
-    nodes: [],
-    connections: [],
-  };
+  const { id, workspaceId, systemId } = useParams<{ 
+    id?: string; 
+    workspaceId?: string; 
+    systemId?: string; 
+  }>();
+  const { getWorkflow, createWorkflow, saveWorkflow } = useWorkflows();
+  const { getSystem } = useSystems();
+  const [initialWorkflow, setInitialWorkflow] = useState<Workflow | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Determine workflow ID - use systemId if available, otherwise use id
+  const workflowId = systemId || id;
+  const isMockWorkflow = workflowId === mockWorkflowId;
+
+  useEffect(() => {
+    const loadWorkflow = async () => {
+      setIsLoading(true);
+      
+      try {
+        if (isMockWorkflow) {
+          // Load mock workflow (sys-001) - check if saved version exists first
+          const savedMockWorkflow = getWorkflow(mockWorkflowId);
+          setInitialWorkflow(savedMockWorkflow || mockWorkflow);
+        } else if (systemId && workspaceId) {
+          // Load from system - get system data and create/load workflow
+          const system = getSystem(systemId);
+          const savedWorkflow = getWorkflow(systemId);
+          
+          if (savedWorkflow) {
+            setInitialWorkflow(savedWorkflow);
+          } else {
+            // Create new workflow for this system using system name
+            const workflowName = system?.name || `System ${systemId}`;
+            createWorkflow({
+              id: systemId, // Use system ID as workflow ID
+              name: workflowName,
+              nodes: [],
+              connections: [],
+            });
+            const created = getWorkflow(systemId);
+            setInitialWorkflow(created);
+          }
+        } else if (workflowId) {
+          // Try to load from localStorage
+          const savedWorkflow = getWorkflow(workflowId);
+          if (savedWorkflow) {
+            setInitialWorkflow(savedWorkflow);
+          } else {
+            // Create new workflow if not found
+            const newId = createWorkflow({
+              name: workflowId || "New Workflow",
+              nodes: [],
+              connections: [],
+            });
+            const created = getWorkflow(newId);
+            setInitialWorkflow(created);
+          }
+        } else {
+          // No ID provided, create a new workflow
+          const newId = createWorkflow({
+            name: "New Workflow",
+            nodes: [],
+            connections: [],
+          });
+          const created = getWorkflow(newId);
+          setInitialWorkflow(created);
+        }
+      } catch (error) {
+        console.error("Error loading workflow:", error);
+        // Create a default workflow on error
+        const newId = createWorkflow({
+          name: "New Workflow",
+          nodes: [],
+          connections: [],
+        });
+        const created = getWorkflow(newId);
+        setInitialWorkflow(created);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadWorkflow();
+  }, [id, workspaceId, systemId, isMockWorkflow, getWorkflow, createWorkflow]);
+
+  // Handle workflow changes (only when explicitly saved)
+  const handleWorkflowChange = useCallback((workflow: Workflow) => {
+    if (workflow && !isMockWorkflow) {
+      // This is called only when saveWorkflow is explicitly called
+      saveWorkflow(workflow);
+    }
+  }, [saveWorkflow, isMockWorkflow]);
+
+  if (isLoading || !initialWorkflow) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-gray-500">Loading workflow...</div>
+      </div>
+    );
+  }
 
   return (
-    <WorkflowProvider initialWorkflow={initialWorkflow}>
-      <WorkflowContent />
+    <WorkflowProvider 
+      initialWorkflow={initialWorkflow}
+      onWorkflowChange={handleWorkflowChange}
+    >
+      <WorkflowContent workspaceId={workspaceId} systemId={systemId} />
     </WorkflowProvider>
   );
 };
