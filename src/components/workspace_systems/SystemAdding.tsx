@@ -2,7 +2,9 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSystems } from "@/contexts/SystemsContext";
+import { SystemService } from "@/lib/services/systemService";
 import { useWorkflows } from "@/contexts/WorkflowsContext";
+import { toast } from "sonner";
 
 interface SystemAddingProps {
   setShowAddingSystem: React.Dispatch<React.SetStateAction<boolean>>;
@@ -13,48 +15,63 @@ const SystemAdding = ({ setShowAddingSystem }: SystemAddingProps) => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const { createSystem } = useSystems();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { updateSystem } = useSystems();
   const { createWorkflow } = useWorkflows();
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim()) {
-      alert("Please enter a system name");
+      toast.error("System name is required", {
+        description: "Please enter a system name",
+      });
       return;
     }
 
     if (!workspaceId) {
-      alert("Workspace ID is missing");
+      toast.error("Workspace ID is missing", {
+        description: "Please try again or refresh the page",
+      });
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      // Create the system
-      const systemId = createSystem({
+      // Call API service to create system
+      const newSystem = await SystemService.createSystem({
         name: name.trim(),
-        description: description.trim() || "",
+        description: description.trim() || undefined,
         workspace_id: workspaceId,
       });
 
+      // Update context with the new system from API
+      updateSystem(newSystem);
+
       // Create corresponding workflow with the same ID
       createWorkflow({
-        id: systemId, // Use system ID as workflow ID
+        id: newSystem.id, // Use system ID as workflow ID
         name: name.trim(),
         nodes: [],
         connections: [],
       });
 
-      // Close modal and refresh
+      toast.success("System created successfully!", {
+        description: `${name.trim()} has been created`,
+      });
+
+      // Close modal and navigate to the new system's workflow
       setShowAddingSystem(false);
-      
-      // Optionally navigate to the new system's workflow
-      // navigate(`/workspaces/${workspaceId}/systems/${systemId}/workflow`);
+      navigate(`/workspaces/${workspaceId}/systems/${newSystem.id}/workflow`);
       
       // Reset form
       setName("");
       setDescription("");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating system:", error);
-      alert("Failed to create system. Please try again.");
+      toast.error("Failed to create system", {
+        description: error.message || "Please try again",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -131,10 +148,12 @@ const SystemAdding = ({ setShowAddingSystem }: SystemAddingProps) => {
             Cancel
           </div>
           <div
-            className="text-sm text-white px-2 py-1 rounded-md bg-[#5757F5] cursor-pointer"
+            className={`text-sm text-white px-2 py-1 rounded-md bg-[#5757F5] cursor-pointer ${
+              isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+            }`}
             onClick={handleCreate}
           >
-            Create new system
+            {isSubmitting ? "Creating..." : "Create new system"}
           </div>
         </div>
       </div>

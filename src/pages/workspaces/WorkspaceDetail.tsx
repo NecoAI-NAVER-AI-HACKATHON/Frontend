@@ -4,16 +4,45 @@ import Models from "../../components/workspace_models/Models";
 import Logs from "../../components/workspace_logs/Logs";
 import Chatbot from "../../components/workspace_chatbot/Chatbot";
 import TopBar from "../../components/topbar/TopBar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { WorkspaceService } from "@/lib/services/workspaceService";
+import { useWorkspaces } from "@/contexts/WorkspacesContext";
+import type { Workspace } from "@/lib/services/workspaceService";
 
-const WorkspaceDetail = ({
-  workspace_name,
-  workspace_description,
-}: {
-  workspace_name: string;
-  workspace_description: string;
-}) => {
+const WorkspaceDetail = () => {
+  const { id } = useParams<{ id: string }>();
   const [clickedOption, setClickedOption] = useState<string>("Systems");
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { getWorkspace: getWorkspaceFromContext, fetchWorkspaces } = useWorkspaces();
+
+  useEffect(() => {
+    const fetchWorkspace = async () => {
+      if (!id) return;
+
+      setLoading(true);
+      try {
+        // Always fetch from API to ensure fresh data
+        const fetchedWorkspace = await WorkspaceService.getWorkspace(id);
+        setWorkspace(fetchedWorkspace);
+        
+        // Also refresh the workspaces list in context
+        await fetchWorkspaces();
+      } catch (error) {
+        console.error("Error fetching workspace:", error);
+        // Fallback to context if API fails
+        const contextWorkspace = getWorkspaceFromContext(id);
+        if (contextWorkspace) {
+          setWorkspace(contextWorkspace);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWorkspace();
+  }, [id, getWorkspaceFromContext, fetchWorkspaces]);
 
   const options = [
     {
@@ -44,11 +73,22 @@ const WorkspaceDetail = ({
       <div className="flex-1 flex flex-col px-10 overflow-y-auto">
         {/* Headers */}
         <div className="flex flex-col mt-5">
+          {loading ? (
+            <div className="animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-64"></div>
+            </div>
+          ) : workspace ? (
+            <>
           <div className="flex items-center gap-2">
             <FolderOpen />
-            <p className="text-xl font-medium">{workspace_name}</p>
+                <p className="text-xl font-medium">{workspace.name || "Untitled Workspace"}</p>
           </div>
-          <p className="font-medium text-[#627193]">{workspace_description}</p>
+              <p className="font-medium text-[#627193]">{workspace.description || "No description"}</p>
+            </>
+          ) : (
+            <p className="text-red-500">Workspace not found</p>
+          )}
         </div>
 
         {/* Options bar */}

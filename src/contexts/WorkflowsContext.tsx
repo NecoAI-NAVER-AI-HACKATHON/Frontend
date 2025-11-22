@@ -55,7 +55,7 @@ export const WorkflowsProvider = ({ children }: WorkflowsProviderProps) => {
       }
     } catch (error) {
       console.error("Error loading workflows from localStorage:", error);
-      setWorkflows([]);
+      setWorkflows([mockWorkflow]);
     } finally {
       setIsLoading(false);
     }

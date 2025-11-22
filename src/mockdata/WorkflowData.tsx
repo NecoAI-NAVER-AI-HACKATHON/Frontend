@@ -1,7 +1,17 @@
 // WorkflowData.tsx
 import type { Workflow, WorkflowNode, ExecutionLog, CustomVariable } from "../types/workflow";
 
-export const mockWorkflowId = "sys-001"; // Matches the system ID in SystemsContext
+/**
+ * Mock Workflow Configuration
+ * 
+ * This mock workflow is linked to the "Daily Feedback Batch Processor" system (sys-001).
+ * When you navigate to /workspaces/{workspaceId}/systems/sys-001/workflow, 
+ * this workflow data will be automatically loaded.
+ * 
+ * The workflow ID "sys-001" matches the system ID in SystemsContext for 
+ * "Daily Feedback Batch Processor" system.
+ */
+export const mockWorkflowId = "sys-001"; // Matches the system ID in SystemsContext for "Daily Feedback Batch Processor"
 
 export const mockWorkflowNodes: WorkflowNode[] = [
   {

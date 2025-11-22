@@ -2,7 +2,7 @@
 
 // Base URL — prefer env, fallback for local dev
 export const API_BASE_URL =
-  import.meta.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 // Common API paths grouped by domain
 export const API = {
@@ -18,11 +18,34 @@ export const API = {
   },
 
   WORKSPACE: {
-    WORKSPACES_LIST: "/workspaces/",
+    CREATE: "/workspaces",
+    LIST: "/workspaces",
+    GET_BY_ID: (workspace_id: string) => `/workspaces/${workspace_id}`,
+    SEARCH: "/workspaces/search",
+    DELETE: (workspace_id: string) => `/workspaces/${workspace_id}`,
+  },
+
+  SYSTEM: {
+    CREATE: "/workspaces/system",
+    GET_ALL: (workspace_id: string) => `/workspaces/${workspace_id}/systems`,
+    GET_BY_ID: (workspace_id: string, system_id: string) =>
+      `/workspaces/${workspace_id}/systems/${system_id}`,
+    ACTIVATE: (workspace_id: string, system_id: string) =>
+      `/workspaces/${workspace_id}/systems/${system_id}/activate`,
   },
 
   WORKFLOW: {
     WORKFLOWS_LIST: (id: string) => `/workspaces/${id}/systems`,
+  },
+
+  EXECUTION: {
+    CREATE: "/executions",
+    GET_BY_ID: (execution_id: string) => `/executions/${execution_id}`,
+    START: (execution_id: string) => `/executions/${execution_id}`,
+  },
+
+  USER: {
+    ME: "/user/me",
   },
 
   // Add more domains as needed

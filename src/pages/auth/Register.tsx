@@ -1,12 +1,13 @@
 // src/pages/auth/Register.tsx
-import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AuthService } from "@/lib/services/authService";
+import { useUser } from "@/contexts/UserContext";
 
 const schema = z
   .object({
@@ -23,6 +24,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function Register() {
   const navigate = useNavigate();
+  const { fetchUser } = useUser();
   const {
     register,
     handleSubmit,
@@ -32,9 +34,36 @@ export default function Register() {
   const onSubmit = async (values: FormData) => {
     try {
       await AuthService.register(values);
-      navigate("/"); // or navigate("/login")
+      // Token is stored in localStorage by AuthService.register()
+      
+      // Try to fetch user profile after successful registration
+      // Don't fail registration if profile fetch fails (500 error)
+      try {
+        await fetchUser();
+      } catch (profileError: any) {
+        // If profile fetch fails (e.g., 500 error), still allow registration to proceed
+        // The UserContext will try again on mount
+        console.warn("Failed to fetch user profile after registration, but registration was successful:", profileError);
+        if (profileError.response?.status !== 500) {
+          // Only show error if it's not a server error (500)
+          toast.warning("Account created, but could not load profile", {
+            description: "You can still access the app.",
+          });
+        }
+      }
+
+      toast.success("Account created successfully!", {
+        description: "Welcome! Redirecting to your workspaces...",
+      });
+
+      // Small delay to show the success toast before navigation
+      setTimeout(() => {
+        navigate("/workspaces");
+      }, 500);
     } catch (err: any) {
-      alert(err.message ?? "Registration failed");
+      toast.error("Registration failed", {
+        description: err.message ?? "Unable to create account. Please try again.",
+      });
     }
   };
 

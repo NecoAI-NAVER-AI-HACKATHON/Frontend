@@ -4,9 +4,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AuthService, type LoginPayload } from "@/lib/services/authService";
+import { useUser } from "@/contexts/UserContext";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -16,6 +18,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function Login() {
   const navigate = useNavigate();
+  const { fetchUser } = useUser();
   const {
     register,
     handleSubmit,
@@ -24,14 +27,37 @@ export default function Login() {
 
   const onSubmit = async (values: LoginPayload) => {
     try {
-      const user = await AuthService.login(values);
-      if (user.token) {
-        localStorage.setItem("access_token", user.token);
+      await AuthService.login(values);
+      // Token is stored in localStorage by AuthService.login()
+      
+      // Try to fetch user profile after successful login
+      // Don't fail login if profile fetch fails (500 error)
+      try {
+        await fetchUser();
+      } catch (profileError: any) {
+        // If profile fetch fails (e.g., 500 error), still allow login to proceed
+        // The UserContext will try again on mount
+        console.warn("Failed to fetch user profile after login, but login was successful:", profileError);
+        if (profileError.response?.status !== 500) {
+          // Only show error if it's not a server error (500)
+          toast.warning("Login successful, but could not load profile", {
+            description: "You can still access the app.",
+          });
+        }
       }
 
+      toast.success("Login successful!", {
+        description: "Welcome back! Redirecting to your workspaces...",
+      });
+
+      // Small delay to show the success toast before navigation
+      setTimeout(() => {
       navigate("/workspaces");
+      }, 500);
     } catch (err: any) {
-      alert(err.message ?? "Login failed");
+      toast.error("Login failed", {
+        description: err.message ?? "Invalid email or password. Please try again.",
+      });
     }
   };
 

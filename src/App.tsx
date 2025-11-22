@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "sonner";
 import Workspaces from "./pages/workspaces/Workspaces";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -12,11 +13,13 @@ import Settings from "./pages/settings/Settings";
 import { WorkflowsProvider } from "./contexts/WorkflowsContext";
 import { WorkspacesProvider } from "./contexts/WorkspacesContext";
 import { SystemsProvider } from "./contexts/SystemsContext";
+import { UserProvider } from "./contexts/UserContext";
 
 import "./index.css";
 
 function App() {
   return (
+    <UserProvider>
     <WorkspacesProvider>
       <SystemsProvider>
         <WorkflowsProvider>
@@ -48,9 +51,11 @@ function App() {
         <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Router>
+            <Toaster position="top-right" richColors />
         </WorkflowsProvider>
       </SystemsProvider>
     </WorkspacesProvider>
+    </UserProvider>
   );
 }
 

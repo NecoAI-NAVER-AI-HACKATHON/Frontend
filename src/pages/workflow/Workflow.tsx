@@ -1,11 +1,23 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import WorkflowNav from "../../components/workflow/WorkflowNav";
 import NodeBarSection from "../../components/workflow/NodeBarSection";
 import NodeConfigSection from "../../components/workflow/NodeConfigSection/index";
 import CanvasSection from "../../components/workflow/CanvasSection";
 import LogSection from "../../components/workflow/LogSection";
 import VariablesSidebar from "../../components/workflow/VariablesSidebar";
+import { ExecutionService } from "../../lib/services/executionService";
+import { MOCK_EXECUTION_OUTPUT } from "../../mockdata/MockExecutionOutput";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
 import { WorkflowProvider, useWorkflow } from "../../contexts/WorkflowContext";
 import { useWorkflows } from "../../contexts/WorkflowsContext";
 import { useSystems } from "../../contexts/SystemsContext";
@@ -21,7 +33,9 @@ import {
   mockWorkflow,
   mockWorkflowNodes,
   mockExecutionLogs,
+  mockWorkflowVariables,
 } from "../../mockdata/WorkflowData";
+
 
 interface WorkflowContentProps {
   workspaceId?: string;
@@ -58,42 +72,42 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
   );
   const [showConfig, setShowConfig] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
+  const [showLoadMockDialog, setShowLoadMockDialog] = useState(false);
+  const [showRevertDialog, setShowRevertDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const [variables, setVariables] = useState<CustomVariable[]>(
     workflow?.variables || []
   );
+  // Store execution output data (for mock workflow)
+  const [executionOutput, setExecutionOutput] = useState<any[]>([]);
+  
+  useEffect(() => {
+    if (executionOutput.length > 0) {
+      executionOutputRef.current = executionOutput;
+    } else if (executionOutputRef.current.length > 0 && isMockWorkflow) {
+      setExecutionOutput([...executionOutputRef.current]);
+    }
+  }, [executionOutput, isMockWorkflow]);
 
-  // Track the workflow ID we've initialized for
   const initializedWorkflowId = useRef<string | null>(null);
   const workflowNodesRef = useRef<WorkflowNode[]>([]);
-
-  // Load nodes and variables from workflow only on initial load or when workflow ID changes
+  const executionOutputRef = useRef<any[]>([]);
+  
   useEffect(() => {
-    const currentWorkflowId = workflow?.id || null;
+    if (executionOutput.length > 0) {
+      executionOutputRef.current = executionOutput;
+    }
+  }, [executionOutput]);
+
+  useEffect(() => {
+    const currentWorkflowId = workflow?.id || (isMockWorkflow ? mockWorkflowId : null);
     
-    // Only initialize if this is a new workflow (ID changed)
     if (currentWorkflowId !== initializedWorkflowId.current) {
-      if (workflow) {
-        // Initial load - sync nodes from workflow
-        if (workflow.nodes && workflow.nodes.length > 0) {
-          setNodes(workflow.nodes);
-          workflowNodesRef.current = workflow.nodes;
-          // Select first node by default if none selected
-          if (workflow.nodes.length > 0) {
-            setSelectedNodeId(workflow.nodes[0].id);
-            setSelectedNodeType(workflow.nodes[0].type);
-          }
-        } else {
-          // Empty workflow - no nodes yet
-          setNodes([]);
-          workflowNodesRef.current = [];
-          setSelectedNodeId(null);
-        }
-        // Load variables from workflow
-        setVariables(workflow.variables || []);
-        initializedWorkflowId.current = currentWorkflowId;
-      } else if (isMockWorkflow && currentWorkflowId === mockWorkflowId) {
-        // For mock workflow, check if there's a saved version first
-        // The workflow object will already have the saved version if it exists
+      setExecutionOutput([]);
+      executionOutputRef.current = [];
+      
+      if (isMockWorkflow) {
         const workflowToUse = workflow || mockWorkflow;
         const nodesToUse = workflowToUse.nodes && workflowToUse.nodes.length > 0 
           ? workflowToUse.nodes 
@@ -110,37 +124,48 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
           setShowConfig(true);
         }
         initializedWorkflowId.current = mockWorkflowId;
+      } else if (workflow) {
+        if (workflow.nodes && workflow.nodes.length > 0) {
+          setNodes(workflow.nodes);
+          workflowNodesRef.current = workflow.nodes;
+          if (workflow.nodes.length > 0) {
+            setSelectedNodeId(workflow.nodes[0].id);
+            setSelectedNodeType(workflow.nodes[0].type);
+          }
+        } else {
+          setNodes([]);
+          workflowNodesRef.current = [];
+          setSelectedNodeId(null);
+        }
+        setVariables(workflow.variables || []);
+        setExecutionOutput([]);
+        executionOutputRef.current = [];
+        initializedWorkflowId.current = currentWorkflowId;
       } else if (!workflow && !isMockWorkflow) {
-        // No workflow loaded yet
         setNodes([]);
         workflowNodesRef.current = [];
         setLogs([]);
         setVariables([]);
+        setExecutionOutput([]);
+        executionOutputRef.current = [];
         setSelectedNodeId(null);
         setShowConfig(false);
         initializedWorkflowId.current = null;
       }
     }
-    // Only depend on workflow ID, not the whole workflow object or selectedNodeId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflow?.id, isMockWorkflow]);
 
-  // Sync variables to workflow object when they change (but don't auto-save)
-  // This ensures variables are preserved when workflow updates
   useEffect(() => {
     if (workflow && updateWorkflowVariables) {
-      // Update workflow object in context to preserve variables
-      // This prevents variables from being lost when nodes change
       const variablesChanged = JSON.stringify(workflow.variables || []) !== JSON.stringify(variables);
       if (variablesChanged) {
-        // Update the workflow object with current variables
         updateWorkflowVariables(variables);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variables, updateWorkflowVariables]);
 
-  // Handlers
   const handleNodeSelect = useCallback((nodeDef: NodeDefinition) => {
     setSelectedNodeType(nodeDef.type);
     // Add new node to canvas with better positioning
@@ -150,17 +175,17 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
         defaultConfig.parameters = {};
       }
 
-      const newNode: WorkflowNode = {
-        id: `node-${Date.now()}`,
-        type: nodeDef.type,
-        name: nodeDef.label,
-        position: {
-          // Place new nodes in a grid-like pattern
-          x: 300 + (nodes.length % 3) * 250,
-          y: 150 + Math.floor(nodes.length / 3) * 150,
-        },
+    const newNode: WorkflowNode = {
+      id: `node-${Date.now()}`,
+      type: nodeDef.type,
+      name: nodeDef.label,
+      position: {
+        // Place new nodes in a grid-like pattern
+        x: 300 + (nodes.length % 3) * 250,
+        y: 150 + Math.floor(nodes.length / 3) * 150,
+      },
         config: defaultConfig,
-      };
+    };
     addNode(newNode);
     setSelectedNodeId(newNode.id);
     setShowConfig(true);
@@ -188,12 +213,9 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
     }
   }, [selectedNodeId, deleteNode, setSelectedNodeId]);
 
-  // Handle keyboard delete
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Delete or Backspace key
       if ((e.key === "Delete" || e.key === "Backspace") && selectedNodeId) {
-        // Don't delete if user is typing in an input field
         const target = e.target as HTMLElement;
         if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
           return;
@@ -210,7 +232,6 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
 
   const handleConfigChange = useCallback(
     (nodeId: string, config: Record<string, any>) => {
-      // Update both config and name if name changed
       const updates: Partial<WorkflowNode> = { config };
       if (config.name) {
         updates.name = config.name;
@@ -220,51 +241,182 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
     [handleNodeUpdate]
   );
 
-  const handleRun = () => {
-    // Convert workflow to backend JSON format
-    const workflowJson = {
-      id: workflow?.id || mockWorkflowId,
-      name: workflow?.name || "Daily Feedback Batch Processor",
-      nodes: nodes.map((node) => {
-        const nodeJson: any = {
-          name: node.config?.name || node.name,
-          type: node.config?.type || node.type,
-          subtype: node.config?.subtype || node.type,
-          position: [node.position.x, node.position.y],
-          parameters: node.config?.parameters || {},
-        };
-        
-        // Add inputSchema if it exists
-        if (node.config?.inputSchema) {
-          nodeJson.inputSchema = node.config.inputSchema;
-        }
-        
-        // Add outputSchema if it exists
-        if (node.config?.outputSchema) {
-          nodeJson.outputSchema = node.config.outputSchema;
-        }
-        
-        return nodeJson;
-      }),
-      connections: buildConnectionsArray(nodes),
+  const getNodeTypeMapping = (node: WorkflowNode) => {
+    if (node.config?.type && node.config?.subtype) {
+      return {
+        type: node.config.type,
+        subtype: node.config.subtype,
+      };
+    }
+    
+    const typeMap: Record<string, { type: string; subtype: string }> = {
+      schedule: { type: "trigger", subtype: "schedule" },
+      webhook: { type: "trigger", subtype: "webhook" },
+      manual: { type: "trigger", subtype: "manual" },
+      "file-upload": { type: "trigger", subtype: "file-upload" },
+      "form-submit": { type: "trigger", subtype: "form-submit" },
+      // AI Processing
+      hyperclova: { type: "ai-processing", subtype: "hyperclova" },
+      "clova-ocr": { type: "ai-processing", subtype: "clova-ocr" },
+      "clova-studio": { type: "ai-processing", subtype: "clova-studio" },
+      papago: { type: "ai-processing", subtype: "papago" },
+      "custom-model": { type: "ai-processing", subtype: "custom-model" },
+      // Transform
+      function: { type: "data-transform", subtype: "function" },
+      split: { type: "data-transform", subtype: "split" },
+      merge: { type: "data-transform", subtype: "merge" },
+      format: { type: "data-transform", subtype: "format" },
+      // Control
+      "if-else": { type: "control", subtype: "if" },
+      loop: { type: "control", subtype: "loop" },
+      switch: { type: "control", subtype: "switch" },
+      // Output
+      "http-request": { type: "output", subtype: "http-request" },
+      database: { type: "output", subtype: "database-writer" },
+      email: { type: "output", subtype: "mail-writer" },
+      "webhook-response": { type: "output", subtype: "webhook-response" },
     };
     
-    // Console log the JSON that would be sent to backend
-    console.log("Workflow JSON to send to backend:", JSON.stringify(workflowJson, null, 2));
+    return typeMap[node.type] || { type: node.type, subtype: node.type };
+  };
+
+  const handleRun = async () => {
+    if (isRunning) {
+      toast.warning("Workflow is already running");
+      return;
+    }
+
+    // Get system ID - use specific ID for mock workflow, otherwise use systemId from route or workflow ID as fallback
+    const MOCK_SYSTEM_ID = "ab9d7305-d11a-419e-8216-f1727534adb7";
+    const systemIdToUse = isMockWorkflow ? MOCK_SYSTEM_ID : (systemId || workflowId);
     
-    // Simulate workflow execution
-    const newLog: ExecutionLog = {
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString("en-US", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
-      message: "Workflow started",
-      status: "success",
-    };
-    addLog(newLog);
+    if (!systemIdToUse) {
+      toast.error("Cannot run workflow: No system ID found");
+      return;
+    }
+
+    setIsRunning(true);
+    
+    try {
+      // Convert workflow to backend JSON format
+      const workflowJson = {
+        id: isMockWorkflow ? MOCK_SYSTEM_ID : (workflow?.id || mockWorkflowId),
+        name: workflow?.name || "Daily Feedback Batch Processor",
+        nodes: nodes.map((node) => {
+          const typeMapping = getNodeTypeMapping(node);
+          const nodeJson: any = {
+            name: node.config?.name || node.name,
+            type: node.config?.type || typeMapping.type,
+            subtype: node.config?.subtype || typeMapping.subtype,
+            position: [node.position.x, node.position.y],
+            parameters: node.config?.parameters || {},
+          };
+          
+          // Add inputSchema if it exists in config
+          if (node.config?.inputSchema) {
+            nodeJson.inputSchema = node.config.inputSchema;
+          }
+          
+          // Add outputSchema if it exists in config
+          if (node.config?.outputSchema) {
+            nodeJson.outputSchema = node.config.outputSchema;
+          }
+          
+          return nodeJson;
+        }),
+        connections: buildConnectionsArray(nodes),
+      };
+      
+      let executionId: string;
+      
+      if (isMockWorkflow) {
+        toast.loading("Creating execution...", { id: "execution-loading" });
+        
+        executionId = MOCK_SYSTEM_ID;
+        
+        toast.loading("Starting workflow execution...", { id: "execution-loading" });
+        
+        await ExecutionService.startExecution(executionId);
+        
+        const mockOutput = Array.isArray(MOCK_EXECUTION_OUTPUT) ? [...MOCK_EXECUTION_OUTPUT] : [];
+        executionOutputRef.current = mockOutput;
+        setExecutionOutput(mockOutput);
+      } else {
+        toast.loading("Creating execution...", { id: "execution-loading" });
+        const execution = await ExecutionService.createExecution({
+          system_id: systemIdToUse,
+          system_json: workflowJson,
+          status: "running",
+        });
+        
+        executionId = execution.id;
+        
+        toast.loading("Starting workflow execution...", { id: "execution-loading" });
+        
+        await ExecutionService.startExecution(executionId);
+        
+        setTimeout(async () => {
+          try {
+            const executionResult = await ExecutionService.getExecution(executionId);
+            if (executionResult.logs) {
+              try {
+                const logsData = typeof executionResult.logs === "string" 
+                  ? JSON.parse(executionResult.logs) 
+                  : executionResult.logs;
+                if (Array.isArray(logsData) && logsData.length > 0) {
+                  setExecutionOutput(logsData);
+                  executionOutputRef.current = logsData;
+                }
+              } catch (parseError) {
+                // Error parsing execution logs
+              }
+            }
+          } catch (fetchError) {
+            // Error fetching execution output
+          }
+        }, 3000);
+      }
+      
+      // Success - add log and show toast
+      const newLog: ExecutionLog = {
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        message: `Workflow execution started successfully (Execution ID: ${executionId})`,
+        status: "success",
+      };
+      addLog(newLog);
+      
+      toast.success("Workflow execution started successfully!", {
+        id: "execution-loading",
+        description: `Execution ID: ${executionId} - Check Output tab for execution results`,
+      });
+    } catch (error: any) {
+      // Add error log
+      const errorLog: ExecutionLog = {
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        message: `Workflow execution failed: ${error.message || "Unknown error"}`,
+        status: "error",
+      };
+      addLog(errorLog);
+      
+      toast.error("Failed to start workflow execution", {
+        id: "execution-loading",
+        description: error.message || "Please try again.",
+      });
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   // Helper function to build connections array in the format: [{ main: [[{sourceNode, targetNode, inputIndex}]] }]
@@ -335,50 +487,102 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
   }, []);
 
   const handleSave = () => {
-    // Save workflow to localStorage with variables
-    if (workflow) {
-      // Update workflow with current variables before saving
+    // Save workflow to localStorage with variables and system_id
+    const workflowIdToSave = systemId || workflowId || workflow?.id;
+    
+    if (workflowIdToSave) {
+      // Update workflow with current nodes, variables, and system_id before saving
       const workflowToSave: Workflow = {
-        ...workflow,
-        variables,
+        id: workflowIdToSave,
+        name: workflow?.name || workflowName,
+        nodes: nodes,
+        connections: nodes.reduce((acc, node) => {
+          if (node.connections?.output) {
+            node.connections.output.forEach((targetId) => {
+              acc.push({ from: node.id, to: targetId });
+            });
+          }
+          return acc;
+        }, [] as Array<{ from: string; to: string }>),
+        variables: variables,
       };
-      // Save directly to WorkflowsContext with variables included
-      // Mock workflow can now be saved to localStorage, but original remains in code
+      
+      // Save to WorkflowsContext (which saves to localStorage)
       saveToStorage(workflowToSave);
-      alert("Workflow saved successfully!");
+      toast.success("Workflow saved successfully!");
     } else {
-      alert("No workflow to save.");
+      toast.error("No workflow to save.");
     }
   };
 
   const handleRevert = () => {
     if (isMockWorkflow) {
-      if (confirm("Are you sure you want to revert the mock workflow to its original state? This will discard all changes saved in localStorage.")) {
+      setShowRevertDialog(true);
+    }
+  };
+
+  const confirmRevert = () => {
         revertMockWorkflow();
+    setShowRevertDialog(false);
         // Reload the page to refresh the workflow
         window.location.reload();
-      }
+  };
+
+  const handleLoadMock = () => {
+    // Open dialog instead of using confirm()
+    setShowLoadMockDialog(true);
+  };
+
+  const confirmLoadMock = () => {
+    // Load mock workflow nodes, connections, and variables
+    setNodes(mockWorkflowNodes);
+    workflowNodesRef.current = mockWorkflowNodes;
+    setLogs(mockExecutionLogs);
+    const variablesToLoad = mockWorkflow.variables || mockWorkflowVariables;
+    setVariables(variablesToLoad);
+    
+    // Update workflow state if it exists
+    if (workflow) {
+      // Update local workflow variables state
+      updateWorkflowVariables(variablesToLoad);
     }
+    
+    // Select first node if available
+    if (mockWorkflowNodes.length > 0) {
+      setSelectedNodeId(mockWorkflowNodes[0].id);
+      setSelectedNodeType(mockWorkflowNodes[0].type);
+      setShowConfig(true);
+    }
+    
+    // Close dialog and show success message
+    setShowLoadMockDialog(false);
+    toast.success("Mock workflow template loaded successfully!");
   };
 
   const handleDelete = () => {
     // Delete workflow from localStorage
     const workflowIdToDelete = systemId || id;
     if (workflowIdToDelete && !isMockWorkflow) {
-      if (confirm("Are you sure you want to delete this workflow? This action cannot be undone.")) {
+      setShowDeleteDialog(true);
+    } else if (isMockWorkflow) {
+      toast.error("Cannot delete mock workflow.");
+    } else {
+      toast.error("No workflow to delete.");
+    }
+  };
+
+  const confirmDelete = () => {
+    const workflowIdToDelete = systemId || id;
+    if (workflowIdToDelete && !isMockWorkflow) {
         deleteWorkflowFromStorage(workflowIdToDelete);
-        alert("Workflow deleted successfully!");
+      setShowDeleteDialog(false);
+      toast.success("Workflow deleted successfully!");
         // Navigate back to workspace or systems page
         if (workspaceId && systemId) {
           navigate(`/workspaces/${workspaceId}`);
         } else {
           navigate("/workspaces");
         }
-      }
-    } else if (isMockWorkflow) {
-      alert("Cannot delete mock workflow.");
-    } else {
-      alert("No workflow to delete.");
     }
   };
 
@@ -398,6 +602,8 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
           showVariables={showVariables}
           onRevert={handleRevert}
           isMockWorkflow={isMockWorkflow}
+          onLoadMock={handleLoadMock}
+          isRunning={isRunning}
         />
 
         {/* Main Content Area */}
@@ -425,7 +631,9 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
             />
 
             {/* Bottom - Execution Logs */}
-            <LogSection logs={logs} />
+            <LogSection
+              logs={logs}
+            />
           </div>
 
           {/* Right Sidebar - Node Configuration or Variables */}
@@ -450,6 +658,84 @@ const WorkflowContent = ({ workspaceId, systemId }: WorkflowContentProps) => {
             />
           )}
         </div>
+
+        {/* Load Mock Workflow Dialog */}
+        <Dialog open={showLoadMockDialog} onOpenChange={setShowLoadMockDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Load the mock workflow template?</DialogTitle>
+              <DialogDescription>
+                This will replace your current workflow with the Daily Feedback Batch Processor template.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowLoadMockDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmLoadMock}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                Load Template
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Revert Workflow Dialog */}
+        <Dialog open={showRevertDialog} onOpenChange={setShowRevertDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Revert mock workflow?</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to revert the mock workflow to its original state? This will discard all changes saved in localStorage.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRevertDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmRevert}
+                variant="destructive"
+              >
+                Revert
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Workflow Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete workflow?</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this workflow? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDelete}
+                variant="destructive"
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 };
@@ -477,7 +763,9 @@ const Workflow = () => {
         if (isMockWorkflow) {
           // Load mock workflow (sys-001) - check if saved version exists first
           const savedMockWorkflow = getWorkflow(mockWorkflowId);
-          setInitialWorkflow(savedMockWorkflow || mockWorkflow);
+          // Always ensure mock workflow is available, even if not in storage yet
+          const workflowToLoad = savedMockWorkflow || mockWorkflow;
+          setInitialWorkflow(workflowToLoad);
         } else if (systemId && workspaceId) {
           // Load from system - get system data and create/load workflow
           const system = getSystem(systemId);
@@ -523,7 +811,6 @@ const Workflow = () => {
           setInitialWorkflow(created);
         }
       } catch (error) {
-        console.error("Error loading workflow:", error);
         // Create a default workflow on error
         const newId = createWorkflow({
           name: "New Workflow",

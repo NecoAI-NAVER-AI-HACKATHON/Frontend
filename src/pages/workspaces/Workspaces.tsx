@@ -24,7 +24,7 @@ import WorkspacesSkeleton from "@/components/workspaces/WorkspacesSkeleton";
 
 const Workspaces = () => {
   const navigate = useNavigate();
-  const { workspaces: contextWorkspaces, isLoading: contextLoading } = useWorkspaces();
+  const { workspaces: contextWorkspaces, isLoading: contextLoading, fetchWorkspaces } = useWorkspaces();
 
   const [loading, setLoading] = useState(true);
 
@@ -33,10 +33,12 @@ const Workspaces = () => {
     useState<boolean>(false);
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [filteredWorkspaces, setFilteredWorkspaces] = useState<Workspace[]>([]);
   const [totalItems, setTotalItems] = useState<number>();
 
   // Variables for filter buttons activate
   // =======================================================================
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [clickedFilter, setClickedFilter] = useState<string>("");
   const [createdValue, setCreatedValue] = useState<string>("Oldest");
   const [nameValue, setNameValue] = useState<string>("A-Z");
@@ -82,33 +84,93 @@ const Workspaces = () => {
     setNameValue("A-Z");
     setStatusValue("All");
     setActiveDropdown("");
+    setSearchQuery("");
   };
 
+  // Filter and sort workspaces
   useEffect(() => {
-    // Use context data if available, otherwise fetch from service
-    if (!contextLoading) {
-      if (contextWorkspaces.length > 0) {
-        setWorkspaces(contextWorkspaces);
-        setTotalItems(contextWorkspaces.length);
-      } else {
-        // If context is empty, try service
-        const fetchData = async () => {
-          try {
-            const response = await WorkspaceService.getAllWorkspaces();
-            setWorkspaces(response.workspaces);
-            setTotalItems(response.total);
-          } catch (error) {
-            console.log(error);
-          } finally {
-            setLoading(false);
-          }
-        };
-        fetchData();
-        return;
+    let filtered = [...workspaces];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(
+        (workspace) =>
+          workspace.name?.toLowerCase().includes(query) ||
+          workspace.description?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply status filter
+    if (statusValue !== "All") {
+      filtered = filtered.filter(
+        (workspace) => workspace.status.toLowerCase() === statusValue.toLowerCase()
+      );
+    }
+
+    // Apply sorting
+    // Sort by name
+    if (nameValue === "A-Z") {
+      filtered.sort((a, b) => {
+        const nameA = (a.name || "").toLowerCase();
+        const nameB = (b.name || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    } else if (nameValue === "Z-A") {
+      filtered.sort((a, b) => {
+        const nameA = (a.name || "").toLowerCase();
+        const nameB = (b.name || "").toLowerCase();
+        return nameB.localeCompare(nameA);
+      });
+    }
+
+    // Sort by created date
+    if (createdValue === "Oldest") {
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateA - dateB;
+      });
+    } else if (createdValue === "Newest") {
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+    }
+
+    setFilteredWorkspaces(filtered);
+  }, [workspaces, searchQuery, statusValue, nameValue, createdValue]);
+
+  // Fetch workspaces from backend when component mounts or when navigating to this page
+  useEffect(() => {
+    const loadWorkspaces = async () => {
+      setLoading(true);
+      try {
+        // Always fetch from backend to ensure fresh data
+        await fetchWorkspaces();
+      } catch (error) {
+        console.error("Error loading workspaces:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
+    };
+    
+    loadWorkspaces();
+  }, [fetchWorkspaces]);
+
+  // Update local state when context workspaces change
+  useEffect(() => {
+    if (!contextLoading) {
+      setWorkspaces(contextWorkspaces);
+      setTotalItems(contextWorkspaces.length);
     }
   }, [contextWorkspaces, contextLoading]);
+
+  // Initialize filtered workspaces when workspaces change
+  useEffect(() => {
+    setFilteredWorkspaces(workspaces);
+  }, [workspaces]);
 
   return (
     <div
@@ -140,8 +202,18 @@ const Workspaces = () => {
             <input
               type="text"
               placeholder="Search for a workspace"
-              className="flex-1 outline-none text-xs text-gray-700 placeholder-gray-400"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 outline-none text-xs text-gray-700 placeholder-gray-400 bg-transparent"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="ml-2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Filter buttons list */}
@@ -246,8 +318,16 @@ const Workspaces = () => {
           {/* If loading → only skeleton cards appear */}
           {loading ? (
             <WorkspacesSkeleton />
+          ) : filteredWorkspaces.length === 0 ? (
+            <div className="col-span-3 flex flex-col items-center justify-center mt-10">
+              <p className="text-sm text-[#627193]">
+                {searchQuery || statusValue !== "All"
+                  ? "No workspaces found matching your filters."
+                  : "No workspaces found. Create your first workspace!"}
+              </p>
+            </div>
           ) : (
-            workspaces.map((workspace) => (
+            filteredWorkspaces.map((workspace) => (
               <div
                 key={workspace.id}
                 className="bg-white border-2 border-gray-300 rounded-2xl p-5 cursor-pointer 

@@ -1,4 +1,4 @@
-import { ArrowLeft, Play, Save, Trash2, ChevronRight, Variable, RotateCcw } from "lucide-react";
+import { ArrowLeft, Play, Save, Trash2, ChevronRight, Variable, RotateCcw, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 
@@ -13,6 +13,8 @@ interface WorkflowNavProps {
   showVariables?: boolean;
   onRevert?: () => void;
   isMockWorkflow?: boolean;
+  onLoadMock?: () => void;
+  isRunning?: boolean;
 }
 
 const WorkflowNav = ({
@@ -26,6 +28,8 @@ const WorkflowNav = ({
   showVariables,
   onRevert,
   isMockWorkflow,
+  onLoadMock,
+  isRunning = false,
 }: WorkflowNavProps) => {
   const navigate = useNavigate();
 
@@ -84,6 +88,17 @@ const WorkflowNav = ({
 
       {/* Right side - Action buttons */}
       <div className="flex items-center gap-3">
+        {onLoadMock && (
+          <Button 
+            onClick={onLoadMock} 
+            variant="outline"
+            title="Load mock workflow template"
+            className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300"
+          >
+            <Download className="w-4 h-4" />
+            Load Mock
+          </Button>
+        )}
         <Button 
           onClick={onVariablesToggle} 
           variant={showVariables ? "default" : "outline"}
@@ -93,9 +108,13 @@ const WorkflowNav = ({
           <Variable className="w-4 h-4" />
           Variables
         </Button>
-        <Button onClick={onRun} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+        <Button 
+          onClick={onRun} 
+          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          disabled={isRunning}
+        >
           <Play className="w-4 h-4" />
-          Run
+          {isRunning ? "Running..." : "Run"}
         </Button>
         <Button onClick={onSave} variant="outline">
           <Save className="w-4 h-4" />

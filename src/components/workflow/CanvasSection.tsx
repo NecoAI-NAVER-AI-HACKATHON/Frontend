@@ -285,7 +285,7 @@ const CanvasSection = ({
           onNodeAdd(newNode);
         }
       } catch (e) {
-        console.error("Error parsing node data:", e);
+        // Error parsing node data
       }
     },
     [onNodeAdd]
