@@ -12,7 +12,7 @@ const Systems = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const workspace_id = id as string;
-  const { getSystemsByWorkspace, systems: allSystems, isLoading: contextLoading } = useSystems();
+  const { getSystemsByWorkspace, systems: allSystems, isLoading: contextLoading, fetchSystems } = useSystems();
 
   const [systems, setSystems] = useState<System[]>([]);
   const [totalItems, setTotalItems] = useState<number>();
@@ -22,29 +22,41 @@ const Systems = () => {
   // Variables for modal
   const [showAddingSystem, setShowAddingSystem] = useState<boolean>(false);
 
+  // Fetch systems from backend when component mounts or workspace_id changes
   useEffect(() => {
-    // Use context data if available, otherwise fetch from service
-    if (!contextLoading) {
-      const contextSystems = getSystemsByWorkspace(workspace_id);
-      setSystems(contextSystems);
-      setTotalItems(contextSystems.length);
-      setLoading(false);
-    } else {
-      // If context is still loading, try service as fallback
-      const fetchData = async () => {
+    if (!workspace_id) return;
+
+    const loadSystems = async () => {
+      setLoading(true);
+      try {
+        // Always fetch from backend to ensure fresh data
+        await fetchSystems(workspace_id);
+      } catch (error) {
+        console.error("Error loading systems:", error);
+        // Fallback to API service if context fetch fails
         try {
           const response = await SystemService.getAllSystems(workspace_id);
           setSystems(response.systems);
           setTotalItems(response.total);
-        } catch (error) {
-          console.log(error);
-        } finally {
-          setLoading(false);
+        } catch (apiError) {
+          console.error("Error fetching systems from API:", apiError);
         }
-      };
-      fetchData();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSystems();
+  }, [workspace_id, fetchSystems]);
+
+  // Update local state when context systems change
+  useEffect(() => {
+    if (!contextLoading && workspace_id) {
+      const contextSystems = getSystemsByWorkspace(workspace_id);
+      setSystems(contextSystems);
+      setTotalItems(contextSystems.length);
     }
-  }, [workspace_id, allSystems, contextLoading, getSystemsByWorkspace]);
+  }, [allSystems, contextLoading, workspace_id, getSystemsByWorkspace]);
 
   return (
     <div className="flex flex-col">

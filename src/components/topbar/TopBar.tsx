@@ -1,9 +1,11 @@
 import { ChevronRight, CircleHelp } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useUser } from "@/contexts/UserContext";
 
 const TopBar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, loading } = useUser();
 
   // Lấy đường dẫn hiện tại và chia thành các phần
   const pathSegments = location.pathname
@@ -56,14 +58,27 @@ const TopBar = () => {
           <CircleHelp className="w-4 h-4" />
         </div>
         <div
-          className="bg-white border rounded-full border-gray-300 cursor-pointer hover:bg-[#EDEDED]"
+          className="bg-white border rounded-full border-gray-300 cursor-pointer hover:bg-[#EDEDED] flex items-center gap-2 px-2 py-1"
           onClick={() => navigate("/settings")}
+          title={user?.email || "User"}
         >
           <img
             src="/default-avt.svg"
-            alt="user"
+            alt={user?.email || "user"}
             className="w-8 h-8 rounded-full"
           />
+          {!loading && user && (
+            <div className="flex flex-col items-start mr-2">
+              <span className="text-xs font-medium text-[#627193]">
+                {user.username || user.email}
+              </span>
+              {user.role && (
+                <span className="text-xs text-gray-500 capitalize">
+                  {user.role}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

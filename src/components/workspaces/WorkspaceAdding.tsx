@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { useWorkspaces } from "@/contexts/WorkspacesContext";
+import { WorkspaceService } from "@/lib/services/workspaceService";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface WorkspaceAddingProps {
   setShowAddingWorkspace: React.Dispatch<React.SetStateAction<boolean>>;
@@ -10,34 +12,41 @@ interface WorkspaceAddingProps {
 const WorkspaceAdding = ({ setShowAddingWorkspace }: WorkspaceAddingProps) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const { createWorkspace } = useWorkspaces();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { updateWorkspace } = useWorkspaces();
   const navigate = useNavigate();
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim()) {
-      alert("Please enter a workspace name");
+      toast.error("Please enter a workspace name");
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      const newId = createWorkspace({
+      // Call API service
+      const newWorkspace = await WorkspaceService.createWorkspace({
         name: name.trim(),
-        description: description.trim() || "",
-        status: "draft",
-        user_id: "user-001", // Default user ID
+        description: description.trim() || undefined,
       });
 
-      // Close modal and refresh
+      // Update context with the new workspace from API
+      updateWorkspace(newWorkspace);
+
+      // Close modal and navigate to the new workspace
       setShowAddingWorkspace(false);
-      // Optionally navigate to the new workspace
-      // navigate(`/workspaces/${newId}`);
+      navigate(`/workspaces/${newWorkspace.id}`);
       
       // Reset form
       setName("");
       setDescription("");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating workspace:", error);
-      alert("Failed to create workspace. Please try again.");
+      toast.error("Failed to create workspace", {
+        description: error.message || "Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -113,10 +122,12 @@ const WorkspaceAdding = ({ setShowAddingWorkspace }: WorkspaceAddingProps) => {
             Cancel
           </div>
           <div
-            className="text-sm text-white px-2 py-1 rounded-md bg-[#5757F5] cursor-pointer"
+            className={`text-sm text-white px-2 py-1 rounded-md bg-[#5757F5] cursor-pointer ${
+              isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+            }`}
             onClick={handleCreate}
           >
-            Create new workspace
+            {isSubmitting ? "Creating..." : "Create new workspace"}
           </div>
         </div>
       </div>

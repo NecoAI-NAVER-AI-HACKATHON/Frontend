@@ -2,6 +2,14 @@ import React, { useState } from "react";
 import { X, Plus, Trash2, Copy, Variable } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 
 export interface CustomVariable {
   id: string;
@@ -22,6 +30,8 @@ const VariablesSidebar = ({
   onClose,
 }: VariablesSidebarProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [variableToDelete, setVariableToDelete] = useState<string | null>(null);
   const [newVariable, setNewVariable] = useState<Omit<CustomVariable, "id">>({
     name: "",
     value: "",
@@ -42,8 +52,15 @@ const VariablesSidebar = ({
   };
 
   const handleDeleteVariable = (id: string) => {
-    if (confirm("Are you sure you want to delete this variable?")) {
-      onVariablesChange(variables.filter((v) => v.id !== id));
+    setVariableToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteVariable = () => {
+    if (variableToDelete) {
+      onVariablesChange(variables.filter((v) => v.id !== variableToDelete));
+      setShowDeleteDialog(false);
+      setVariableToDelete(null);
     }
   };
 
@@ -192,7 +209,7 @@ const VariablesSidebar = ({
                         )}
                         <div className="max-h-[200px] overflow-y-auto overflow-x-auto rounded border border-gray-200 bg-gray-50">
                           <pre className="text-xs text-gray-600 font-mono px-2 py-1 m-0 whitespace-pre-wrap break-words">
-                            {variable.value || "(empty)"}
+                          {variable.value || "(empty)"}
                           </pre>
                         </div>
                       </div>
@@ -224,6 +241,35 @@ const VariablesSidebar = ({
           )}
         </div>
       </div>
+
+      {/* Delete Variable Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete variable?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this variable? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setVariableToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteVariable}
+              variant="destructive"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -275,12 +321,12 @@ const EditVariableForm = ({
             style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
           />
         ) : (
-          <Input
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="h-8 text-sm"
-          />
+        <Input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="h-8 text-sm"
+        />
         )}
       </div>
       <div>

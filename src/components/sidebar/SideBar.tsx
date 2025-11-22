@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LayoutDashboard,
   Settings,
@@ -7,10 +8,51 @@ import {
   ChartColumnBig,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { AuthService } from "@/lib/services/authService";
+import { useUser } from "@/contexts/UserContext";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Button } from "../ui/button";
 
 const SideBar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { clearUser } = useUser();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+  const handleLogout = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const confirmLogout = async () => {
+    try {
+      await AuthService.logout();
+      clearUser(); // Clear user profile from context
+      setShowLogoutDialog(false);
+      toast.success("Logged out successfully", {
+        description: "You have been logged out",
+      });
+      navigate("/login");
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      // Even if logout fails, clear local state and redirect
+      clearUser(); // Clear user profile from context
+      localStorage.removeItem("access_token");
+      sessionStorage.removeItem("access_token");
+      setShowLogoutDialog(false);
+      toast.error("Logout failed", {
+        description: "Redirecting to login page...",
+      });
+      navigate("/login");
+    }
+  };
 
   // There are buttons on the side bar, user can click on them to go to the corresponding page
   // --------------------------------------------------
@@ -93,7 +135,16 @@ const SideBar = () => {
               key={index}
               className="px-8 py-2 hover:bg-[#EDEDED] hover:font-medium"
             >
-              <div className="flex flex-items gap-2 items-center cursor-pointer text-[#627193]">
+              <div
+                className="flex flex-items gap-2 items-center cursor-pointer text-[#627193]"
+                onClick={() => {
+                  if (page.title === "Logout") {
+                    handleLogout();
+                  } else {
+                    navigate(page.link);
+                  }
+                }}
+              >
                 <page.icon className="h-4 w-auto" />
                 <p className="text-sm">{page.title}</p>
               </div>
@@ -101,6 +152,32 @@ const SideBar = () => {
           ))}
         </div>
       </div>
+
+      {/* Logout Dialog */}
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Logout?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to logout?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowLogoutDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmLogout}
+              variant="destructive"
+            >
+              Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

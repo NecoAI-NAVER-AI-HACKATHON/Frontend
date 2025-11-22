@@ -40,6 +40,14 @@ export const WorkflowProvider = ({ children, initialWorkflow, onWorkflowChange }
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
+  // Update workflow when initialWorkflow changes (e.g., after loading from storage)
+  useEffect(() => {
+    if (initialWorkflow) {
+      setWorkflow(initialWorkflow);
+      setNodes(initialWorkflow.nodes || []);
+    }
+  }, [initialWorkflow?.id]);
+
   // Ref to track if this is the initial load (to avoid saving on mount)
   const isInitialLoad = useRef(true);
 
