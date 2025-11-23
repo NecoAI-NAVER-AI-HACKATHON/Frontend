@@ -15,8 +15,6 @@ api.interceptors.request.use(
   const token = localStorage.getItem("access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.warn("No access token found in localStorage. Request might fail with 401.");
   }
   return config;
   },
@@ -36,10 +34,13 @@ api.interceptors.response.use(
     if (status === 401) {
       // Clear token if unauthorized
       localStorage.removeItem("access_token");
-      // Redirect to login if not already there
+      // Redirect to login only if on protected routes, not on public routes (landing, login, register)
       const currentPath = window.location.pathname;
-      if (!currentPath.includes("/login") && !currentPath.includes("/register")) {
-        console.warn("Unauthorized (401) - redirecting to login");
+      const publicRoutes = ["/", "/login", "/register"];
+      const isPublicRoute = publicRoutes.some(route => currentPath === route || currentPath.startsWith(route + "/"));
+      
+      if (!isPublicRoute) {
+        // Only redirect to login from protected routes
         window.location.href = "/login";
       }
     }
